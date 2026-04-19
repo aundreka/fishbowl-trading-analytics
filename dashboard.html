@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fishbowl Trading Analytics — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #07101e;
+  --bg2:       #0b1828;
+  --bg3:       #0e1f33;
+  --glass:     rgba(255,255,255,0.045);
+  --glass2:    rgba(255,255,255,0.07);
+  --border:    rgba(255,255,255,0.08);
+  --border2:   rgba(255,255,255,0.13);
+  --teal:      #24946a;
+  --teal2:     rgba(36,148,106,0.18);
+  --teal3:     rgba(36,148,106,0.08);
+  --blue:      #1a5fa8;
+  --blue2:     rgba(26,95,168,0.2);
+  --red:       #c0392b;
+  --red2:      rgba(192,57,43,0.15);
+  --amber:     #c47c1a;
+  --t1:        rgba(255,255,255,0.88);
+  --t2:        rgba(255,255,255,0.5);
+  --t3:        rgba(255,255,255,0.28);
+  --t4:        rgba(255,255,255,0.16);
+  --mono:      'DM Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
+}
+
+html, body { width: 100%; height: 100%; font-family: var(--sans); background: var(--bg); color: var(--t1); overflow: hidden; }
+
+/* ── Layout ── */
+.app { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 100vh; height: 100vh; overflow: hidden; }
+
+/* ── Sidebar ── */
+.sidebar {
+  background: rgba(7,14,26,0.95);
+  border-right: 0.5px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 20;
+}
+
+.sidebar-logo {
+  padding: 22px 20px 18px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center; gap: 11px;
+}
+.logo-icon { flex-shrink: 0; }
+.logo-text { line-height: 1.2; }
+.logo-text .l1 { font-size: 13px; font-weight: 500; color: var(--t1); }
+.logo-text .l2 { font-family: var(--mono); font-size: 8.5px; font-weight: 300; color: var(--t3); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 2px; }
+
+.sidebar-section { padding: 16px 12px 8px; }
+.sidebar-section-label { font-family: var(--mono); font-size: 8px; font-weight: 400; color: var(--t4); letter-spacing: 0.18em; text-transform: uppercase; padding: 0 8px; margin-bottom: 6px; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 8px;
+  font-size: 13px; font-weight: 400; color: var(--t3);
+  cursor: pointer; margin-bottom: 2px;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+.nav-item:hover { background: var(--glass2); color: var(--t2); }
+.nav-item.active { background: rgba(36,148,106,0.12); color: rgba(36,148,106,0.9); }
+.nav-item.active .nav-icon { opacity: 1; }
+.nav-icon { width: 16px; height: 16px; opacity: 0.45; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 0.9; }
+.nav-badge { margin-left: auto; background: rgba(36,148,106,0.2); border: 0.5px solid rgba(36,148,106,0.3); color: rgba(36,148,106,0.85); font-size: 9px; font-family: var(--mono); padding: 1px 6px; border-radius: 10px; }
+
+.sidebar-spacer { flex: 1; }
+
+.sidebar-user {
+  padding: 14px 16px; border-top: 0.5px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.user-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, rgba(36,148,106,0.6), rgba(26,95,168,0.6));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85);
+  flex-shrink: 0;
+}
+.user-info .u1 { font-size: 12px; font-weight: 500; color: var(--t2); }
+.user-info .u2 { font-size: 10px; color: var(--t4); margin-top: 1px; }
+
+/* ── Main ── */
+.main { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+
+/* Topbar */
+.topbar {
+  height: 54px; flex-shrink: 0;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 24px; gap: 16px;
+  background: rgba(7,14,26,0.8);
+  backdrop-filter: blur(10px);
+}
+.topbar-title { font-size: 14px; font-weight: 500; color: var(--t1); }
+.topbar-sub { font-size: 11px; color: var(--t3); margin-left: 2px; }
+.topbar-spacer { flex: 1; }
+.topbar-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--glass); border: 0.5px solid var(--border2);
+  border-radius: 20px; padding: 5px 12px;
+  font-size: 11px; color: var(--t3);
+}
+.dot-live { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.topbar-btn {
+  background: var(--glass); border: 0.5px solid var(--border2);
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 12px; color: var(--t2); cursor: pointer; font-family: var(--sans);
+  transition: background 0.15s;
+}
+.topbar-btn:hover { background: var(--glass2); }
+.topbar-btn.accent {
+  background: rgba(36,148,106,0.15); border-color: rgba(36,148,106,0.3);
+  color: rgba(36,148,106,0.9);
+}
+
+/* Content area */
+.content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
+.content::-webkit-scrollbar { width: 4px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── KPI Row ── */
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; flex-shrink: 0; }
+
+.kpi-card {
+  background: var(--glass);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.kpi-card:hover { border-color: var(--border2); }
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+}
+.kpi-label { font-family: var(--mono); font-size: 8.5px; font-weight: 300; color: var(--t4); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+.kpi-value { font-family: var(--mono); font-size: 22px; font-weight: 400; color: var(--t1); line-height: 1; margin-bottom: 6px; }
+.kpi-value.pos { color: rgba(36,148,106,0.9); }
+.kpi-value.neg { color: rgba(192,57,43,0.9); }
+.kpi-delta { font-size: 11px; color: var(--t3); display: flex; align-items: center; gap: 4px; }
+.kpi-delta .arrow-up { color: rgba(36,148,106,0.8); }
+.kpi-delta .arrow-dn { color: rgba(192,57,43,0.8); }
+.kpi-sparkline { position: absolute; right: 12px; bottom: 12px; opacity: 0.5; }
+
+/* ── Middle Row ── */
+.mid-row { display: grid; grid-template-columns: 1fr 320px; gap: 16px; flex: 1; min-height: 0; }
+
+.panel {
+  background: var(--glass);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.panel-header {
+  padding: 14px 18px 12px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.panel-title { font-size: 12px; font-weight: 500; color: var(--t2); }
+.panel-sub { font-size: 10px; color: var(--t4); margin-left: auto; font-family: var(--mono); }
+.panel-body { flex: 1; min-height: 0; padding: 16px 18px; overflow: hidden; }
+
+/* Chart */
+.chart-wrap { width: 100%; height: 100%; position: relative; }
+
+/* ── Bottom Row ── */
+.bot-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; flex-shrink: 0; }
+
+/* Table */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  font-family: var(--mono); font-size: 8.5px; font-weight: 400;
+  color: var(--t4); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0 0 10px; text-align: left; border-bottom: 0.5px solid var(--border);
+}
+.data-table td { font-size: 11.5px; color: var(--t2); padding: 8px 0; border-bottom: 0.5px solid rgba(255,255,255,0.04); vertical-align: middle; font-family: var(--mono); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table td.sym { color: var(--t1); font-weight: 400; font-family: var(--sans); font-size: 12px; }
+.data-table td.pos { color: rgba(36,148,106,0.85); }
+.data-table td.neg { color: rgba(192,57,43,0.85); }
+
+.status-pill {
+  display: inline-block; font-size: 9px; font-family: var(--mono);
+  padding: 2px 7px; border-radius: 10px; letter-spacing: 0.06em;
+}
+.status-pill.active { background: rgba(36,148,106,0.15); color: rgba(36,148,106,0.85); border: 0.5px solid rgba(36,148,106,0.25); }
+.status-pill.paused { background: rgba(196,124,26,0.12); color: rgba(196,124,26,0.8); border: 0.5px solid rgba(196,124,26,0.22); }
+.status-pill.stopped { background: rgba(192,57,43,0.12); color: rgba(192,57,43,0.75); border: 0.5px solid rgba(192,57,43,0.2); }
+
+/* Mini bar */
+.mini-bar-wrap { display: flex; flex-direction: column; gap: 10px; }
+.mini-bar-row { display: flex; flex-direction: column; gap: 4px; }
+.mini-bar-label { display: flex; justify-content: space-between; }
+.mini-bar-name { font-size: 11px; color: var(--t2); }
+.mini-bar-val { font-family: var(--mono); font-size: 11px; color: var(--t3); }
+.mini-bar-track { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.mini-bar-fill { height: 100%; border-radius: 2px; }
+
+/* Ticker */
+.ticker {
+  position: fixed; bottom: 0; left: 220px; right: 0; height: 28px;
+  background: rgba(4,9,18,0.85); border-top: 0.5px solid var(--border);
+  display: flex; align-items: center; overflow: hidden; z-index: 50;
+  backdrop-filter: blur(10px);
+}
+.ticker-lbl {
+  flex-shrink: 0; padding: 0 12px;
+  font-family: var(--mono); font-size: 8.5px; color: rgba(36,148,106,0.6);
+  letter-spacing: 0.15em; text-transform: uppercase;
+  border-right: 0.5px solid var(--border); height: 100%;
+  display: flex; align-items: center;
+}
+.ticker-track { flex: 1; overflow: hidden; }
+.ticker-inner { display: flex; gap: 28px; white-space: nowrap; animation: scroll 30s linear infinite; padding-left: 40px; }
+.ti { font-family: var(--mono); font-size: 9.5px; color: var(--t3); display: flex; align-items: center; gap: 4px; }
+.ti .sym { color: rgba(255,255,255,0.42); font-weight: 400; }
+.up { color: rgba(36,148,106,0.8); } .dn { color: rgba(192,57,43,0.75); }
+@keyframes scroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+/* Scrollbar in main content */
+.sidebar { scrollbar-width: none; }
+
+/* Tag */
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; font-family: var(--mono); padding: 2px 8px; border-radius: 10px; background: var(--glass2); border: 0.5px solid var(--border); color: var(--t3); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg class="logo-icon" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="14" r="11" fill="rgba(255,255,255,0.03)" stroke="rgba(36,148,106,0.3)" stroke-width="0.75"/>
+        <circle cx="16" cy="14" r="11" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="5"/>
+        <ellipse cx="16" cy="14" rx="7.5" ry="7.5" fill="rgba(14,60,130,0.2)" stroke="rgba(36,148,106,0.15)" stroke-width="0.5"/>
+        <path d="M10 14 Q13 10 16 12.5 Q19 15 21.5 11.5" stroke="rgba(36,148,106,0.9)" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <path d="M10 14 Q8.5 12.5 8.5 14 Q8.5 15.5 10 14" fill="rgba(36,148,106,0.55)"/>
+        <circle cx="11.5" cy="12" r="1" fill="rgba(255,255,255,0.75)"/>
+        <circle cx="11.8" cy="11.7" r="0.32" fill="rgba(10,10,30,0.8)"/>
+        <circle cx="19" cy="16.5" r="1.1" fill="rgba(26,95,168,0.6)" stroke="rgba(36,148,106,0.25)" stroke-width="0.5"/>
+        <circle cx="19.35" cy="16.15" r="0.35" fill="rgba(255,255,255,0.65)"/>
+        <ellipse cx="16" cy="24" rx="5" ry="1.2" fill="rgba(36,148,106,0.1)" stroke="rgba(36,148,106,0.25)" stroke-width="0.5"/>
+        <rect x="14.5" y="24.8" width="3" height="3.5" rx="1" fill="rgba(36,148,106,0.12)" stroke="rgba(36,148,106,0.22)" stroke-width="0.5"/>
+        <ellipse cx="16" cy="28.5" rx="4" ry="0.9" fill="rgba(36,148,106,0.07)" stroke="rgba(36,148,106,0.18)" stroke-width="0.5"/>
+      </svg>
+      <div class="logo-text">
+        <div class="l1">Fishbowl</div>
+        <div class="l2">Trading Analytics</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Overview</div>
+      <a class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="5.5" height="5.5" rx="1"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1"/><rect x="1" y="9.5" width="5.5" height="5.5" rx="1"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><polyline points="1,12 5,7 8,9 11,4 15,8"/><line x1="1" y1="15" x2="15" y2="15"/></svg>
+        Performance
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Strategies</div>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="4" x2="8" y2="8.5"/><line x1="8" y1="8.5" x2="11" y2="10"/></svg>
+        Backtesting
+        <span class="nav-badge">3</span>
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 12 L5 4 L8 9 L11 6 L14 10"/><circle cx="5" cy="4" r="1.2" fill="currentColor" stroke="none"/><circle cx="11" cy="6" r="1.2" fill="currentColor" stroke="none"/></svg>
+        Strategy Builder
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 1.5 L14.5 5 L14.5 11 L8 14.5 L1.5 11 L1.5 5 Z"/><line x1="8" y1="1.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="14.5" y2="8"/></svg>
+        Optimization
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Analysis</div>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="7" width="3" height="8" rx="0.5"/><rect x="6" y="4" width="3" height="11" rx="0.5"/><rect x="11" y="1" width="3" height="14" rx="0.5"/></svg>
+        Risk Metrics
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="14.5" y2="14.5"/></svg>
+        Trade Journal
+      </a>
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 4h14M1 8h10M1 12h12"/></svg>
+        Reports
+      </a>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-section" style="padding-bottom:12px">
+      <a class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        Settings
+      </a>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-avatar">JR</div>
+      <div class="user-info">
+        <div class="u1">J. Reyes</div>
+        <div class="u2">Pro · Institutional</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <span class="topbar-title">Dashboard</span>
+        <span class="topbar-sub">— Overview</span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-pill">
+        <div class="dot-live"></div>
+        Live market data
+      </div>
+      <div class="topbar-pill" style="gap:6px">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"><rect x="1" y="2" width="10" height="9" rx="1"/><line x1="4" y1="1" x2="4" y2="3"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="1" y1="5" x2="11" y2="5"/></svg>
+        <span style="font-size:11px;color:var(--t3)">Jan 1 – Apr 19, 2026</span>
+      </div>
+      <button class="topbar-btn">Export</button>
+      <button class="topbar-btn accent">+ New Backtest</button>
+    </div>
+
+    <!-- Scrollable content -->
+    <div class="content">
+
+      <!-- KPI Row -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Return</div>
+          <div class="kpi-value pos">+34.7%</div>
+          <div class="kpi-delta"><span class="arrow-up">▲</span> 2.1% this week</div>
+          <svg class="kpi-sparkline" width="48" height="22" viewBox="0 0 48 22" fill="none">
+            <polyline points="0,18 8,14 16,16 24,9 32,11 40,5 48,7" stroke="rgba(36,148,106,0.6)" stroke-width="1.2" fill="none"/>
+          </svg>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Sharpe Ratio</div>
+          <div class="kpi-value">1.84</div>
+          <div class="kpi-delta"><span class="arrow-up" style="color:rgba(36,148,106,0.8)">▲</span> vs 1.62 benchmark</div>
+          <svg class="kpi-sparkline" width="48" height="22" viewBox="0 0 48 22" fill="none">
+            <polyline points="0,14 8,12 16,15 24,10 32,8 40,9 48,6" stroke="rgba(36,148,106,0.4)" stroke-width="1.2" fill="none"/>
+          </svg>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Max Drawdown</div>
+          <div class="kpi-value neg">-8.3%</div>
+          <div class="kpi-delta"><span class="arrow-dn">▼</span> Below -12% target</div>
+          <svg class="kpi-sparkline" width="48" height="22" viewBox="0 0 48 22" fill="none">
+            <polyline points="0,6 8,9 16,7 24,14 32,17 40,13 48,15" stroke="rgba(192,57,43,0.5)" stroke-width="1.2" fill="none"/>
+          </svg>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Win Rate</div>
+          <div class="kpi-value">63.2%</div>
+          <div class="kpi-delta"><span class="arrow-up" style="color:rgba(36,148,106,0.8)">▲</span> 847 total trades</div>
+          <svg class="kpi-sparkline" width="48" height="22" viewBox="0 0 48 22" fill="none">
+            <polyline points="0,12 8,10 16,13 24,8 32,9 40,7 48,8" stroke="rgba(36,148,106,0.4)" stroke-width="1.2" fill="none"/>
+          </svg>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Profit Factor</div>
+          <div class="kpi-value">2.31</div>
+          <div class="kpi-delta"><span class="arrow-up" style="color:rgba(36,148,106,0.8)">▲</span> Gross / loss ratio</div>
+          <svg class="kpi-sparkline" width="48" height="22" viewBox="0 0 48 22" fill="none">
+            <polyline points="0,16 8,13 16,11 24,8 32,10 40,7 48,5" stroke="rgba(36,148,106,0.5)" stroke-width="1.2" fill="none"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Middle Row: Equity Curve + Side Panel -->
+      <div class="mid-row">
+
+        <!-- Equity Curve Chart -->
+        <div class="panel">
+          <div class="panel-header">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="rgba(36,148,106,0.7)" stroke-width="1.2"><polyline points="0.5,10 3.5,5.5 6,7.5 8.5,3 12.5,5.5"/></svg>
+            <span class="panel-title">Equity Curve</span>
+            <div style="display:flex;gap:8px;margin-left:10px">
+              <span class="tag">Strategy</span>
+              <span class="tag" style="background:rgba(26,95,168,0.1);border-color:rgba(26,95,168,0.2);color:rgba(100,160,230,0.7)">Benchmark</span>
+            </div>
+            <span class="panel-sub">RSI-MACD Momentum v4.2</span>
+          </div>
+          <div class="panel-body" style="padding:12px 16px 8px">
+            <!-- Y-axis labels + chart -->
+            <div style="display:flex;height:100%;gap:8px">
+              <div style="display:flex;flex-direction:column;justify-content:space-between;padding-bottom:22px">
+                <span style="font-family:var(--mono);font-size:9px;color:var(--t4)">+40%</span>
+                <span style="font-family:var(--mono);font-size:9px;color:var(--t4)">+30%</span>
+                <span style="font-family:var(--mono);font-size:9px;color:var(--t4)">+20%</span>
+                <span style="font-family:var(--mono);font-size:9px;color:var(--t4)">+10%</span>
+                <span style="font-family:var(--mono);font-size:9px;color:var(--t4)">0%</span>
+              </div>
+              <div style="flex:1;position:relative">
+                <svg width="100%" height="100%" viewBox="0 0 560 180" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="gStrat" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(36,148,106,0.25)"/>
+                      <stop offset="100%" stop-color="rgba(36,148,106,0)"/>
+                    </linearGradient>
+                    <linearGradient id="gBench" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(26,95,168,0.15)"/>
+                      <stop offset="100%" stop-color="rgba(26,95,168,0)"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- Horizontal grid lines -->
+                  <line x1="0" y1="0"   x2="560" y2="0"   stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                  <line x1="0" y1="45"  x2="560" y2="45"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                  <line x1="0" y1="90"  x2="560" y2="90"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                  <line x1="0" y1="135" x2="560" y2="135" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                  <line x1="0" y1="158" x2="560" y2="158" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+                  <!-- Benchmark area -->
+                  <path d="M0,158 L0,138 C40,130 70,125 100,128 C140,132 170,115 210,110 C250,105 290,100 330,95 C370,90 410,92 450,86 C490,80 520,78 560,72 L560,158 Z" fill="url(#gBench)"/>
+                  <path d="M0,138 C40,130 70,125 100,128 C140,132 170,115 210,110 C250,105 290,100 330,95 C370,90 410,92 450,86 C490,80 520,78 560,72" fill="none" stroke="rgba(26,95,168,0.55)" stroke-width="1.2" stroke-dasharray="4,3"/>
+                  <!-- Strategy area -->
+                  <path d="M0,158 L0,135 C30,122 55,115 80,118 C110,122 130,100 170,90 C210,80 240,85 270,72 C300,59 330,62 360,48 C390,34 420,40 450,28 C480,16 520,18 560,10 L560,158 Z" fill="url(#gStrat)"/>
+                  <path d="M0,135 C30,122 55,115 80,118 C110,122 130,100 170,90 C210,80 240,85 270,72 C300,59 330,62 360,48 C390,34 420,40 450,28 C480,16 520,18 560,10" fill="none" stroke="rgba(36,148,106,0.85)" stroke-width="1.8"/>
+                  <!-- Drawdown highlight region -->
+                  <rect x="100" y="90" width="70" height="35" fill="rgba(192,57,43,0.06)" rx="2"/>
+                  <line x1="100" y1="90" x2="100" y2="158" stroke="rgba(192,57,43,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>
+                  <line x1="170" y1="90" x2="170" y2="158" stroke="rgba(192,57,43,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>
+                  <!-- Tooltip dot -->
+                  <circle cx="450" cy="28" r="3.5" fill="rgba(36,148,106,0.9)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+                  <line x1="450" y1="28" x2="450" y2="158" stroke="rgba(36,148,106,0.2)" stroke-width="0.5" stroke-dasharray="2,2"/>
+                  <!-- Tooltip box -->
+                  <rect x="360" y="6" width="115" height="38" rx="5" fill="rgba(11,24,40,0.92)" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+                  <text x="368" y="19" font-family="DM Mono,monospace" font-size="7.5" fill="rgba(255,255,255,0.35)" letter-spacing="1">STRATEGY</text>
+                  <text x="368" y="32" font-family="DM Mono,monospace" font-size="11" fill="rgba(36,148,106,0.9)">+34.7%</text>
+                  <text x="430" y="32" font-family="DM Mono,monospace" font-size="9" fill="rgba(26,95,168,0.7)">+22.1%</text>
+                  <text x="430" y="19" font-family="DM Mono,monospace" font-size="7.5" fill="rgba(255,255,255,0.25)" letter-spacing="1">BENCH</text>
+                  <!-- X labels -->
+                  <text x="0"   y="175" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,255,255,0.2)">Jan</text>
+                  <text x="105" y="175" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,255,255,0.2)">Feb</text>
+                  <text x="230" y="175" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,255,255,0.2)">Mar</text>
+                  <text x="370" y="175" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,255,255,0.2)">Apr</text>
+                  <text x="510" y="175" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,255,255,0.2)">Now</text>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side panel: Portfolio Allocation -->
+        <div class="panel">
+          <div class="panel-header">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="rgba(36,148,106,0.7)" stroke-width="1.2"><circle cx="6.5" cy="6.5" r="5.5"/><path d="M6.5 1 A5.5 5.5 0 0 1 12 6.5 L6.5 6.5 Z" fill="rgba(36,148,106,0.25)" stroke="none"/></svg>
+            <span class="panel-title">Allocation</span>
+            <span class="panel-sub">by asset class</span>
+          </div>
+          <div class="panel-body" style="padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+
+            <!-- Donut chart -->
+            <div style="display:flex;justify-content:center;align-items:center;margin:4px 0 6px">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <!-- segments -->
+                <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(36,148,106,0.8)"   stroke-width="16" stroke-dasharray="105.6 158.4" stroke-dashoffset="0"   transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(26,95,168,0.75)"   stroke-width="16" stroke-dasharray="63.4 200.6"  stroke-dashoffset="-105.6"  transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(196,124,26,0.7)"   stroke-width="16" stroke-dasharray="39.6 224.4"  stroke-dashoffset="-169"    transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(192,57,43,0.6)"    stroke-width="16" stroke-dasharray="25.1 238.9"  stroke-dashoffset="-208.6"  transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="16" stroke-dasharray="30.8 233.2"  stroke-dashoffset="-233.7"  transform="rotate(-90 60 60)"/>
+                <!-- Center -->
+                <circle cx="60" cy="60" r="30" fill="rgba(7,16,30,0.95)"/>
+                <text x="60" y="56" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" fill="rgba(255,255,255,0.85)" font-weight="400">$2.4M</text>
+                <text x="60" y="68" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="rgba(255,255,255,0.3)" letter-spacing="1">AUM</text>
+              </svg>
+            </div>
+
+            <!-- Legend -->
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:2px;background:rgba(36,148,106,0.8);display:inline-block"></span><span style="font-size:12px;color:var(--t2)">US Equities</span></div>
+                <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">40%</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:2px;background:rgba(26,95,168,0.75);display:inline-block"></span><span style="font-size:12px;color:var(--t2)">Fixed Income</span></div>
+                <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">24%</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:2px;background:rgba(196,124,26,0.7);display:inline-block"></span><span style="font-size:12px;color:var(--t2)">Commodities</span></div>
+                <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">15%</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:2px;background:rgba(192,57,43,0.6);display:inline-block"></span><span style="font-size:12px;color:var(--t2)">Crypto</span></div>
+                <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">10%</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:2px;background:rgba(255,255,255,0.18);display:inline-block"></span><span style="font-size:12px;color:var(--t2)">Cash & Other</span></div>
+                <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">11%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Row: Strategies Table + Risk Metrics + Monthly Returns -->
+      <div class="bot-row">
+
+        <!-- Active Strategies -->
+        <div class="panel" style="min-height:0">
+          <div class="panel-header">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="rgba(36,148,106,0.7)" stroke-width="1.2"><path d="M1 10 L4 3 L6.5 6.5 L9 4 L12 8"/></svg>
+            <span class="panel-title">Active Strategies</span>
+            <span class="panel-sub">3 running</span>
+          </div>
+          <div class="panel-body" style="padding:12px 16px;overflow-y:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Strategy</th>
+                  <th>Return</th>
+                  <th>DD</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="sym">RSI-MACD v4.2</td>
+                  <td class="pos">+34.7%</td>
+                  <td class="neg">8.3%</td>
+                  <td><span class="status-pill active">Active</span></td>
+                </tr>
+                <tr>
+                  <td class="sym">MA Crossover v2</td>
+                  <td class="pos">+19.1%</td>
+                  <td class="neg">5.1%</td>
+                  <td><span class="status-pill active">Active</span></td>
+                </tr>
+                <tr>
+                  <td class="sym">Bollinger Mean Rev</td>
+                  <td class="pos">+11.4%</td>
+                  <td class="neg">11.7%</td>
+                  <td><span class="status-pill paused">Paused</span></td>
+                </tr>
+                <tr>
+                  <td class="sym">Vol Breakout v1</td>
+                  <td class="neg">-3.2%</td>
+                  <td class="neg">14.8%</td>
+                  <td><span class="status-pill stopped">Stopped</span></td>
+                </tr>
+                <tr>
+                  <td class="sym">Pairs Trading SPY</td>
+                  <td class="pos">+22.6%</td>
+                  <td class="neg">6.4%</td>
+                  <td><span class="status-pill active">Active</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Risk Metrics -->
+        <div class="panel" style="min-height:0">
+          <div class="panel-header">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="rgba(196,124,26,0.7)" stroke-width="1.2"><path d="M6.5 1.5 L12 11.5 L1 11.5 Z"/><line x1="6.5" y1="5.5" x2="6.5" y2="8.5"/><circle cx="6.5" cy="10" r="0.6" fill="rgba(196,124,26,0.7)" stroke="none"/></svg>
+            <span class="panel-title">Risk Metrics</span>
+            <span class="panel-sub">RSI-MACD v4.2</span>
+          </div>
+          <div class="panel-body" style="padding:14px 18px">
+            <div class="mini-bar-wrap">
+              <div class="mini-bar-row">
+                <div class="mini-bar-label"><span class="mini-bar-name">Sharpe Ratio</span><span class="mini-bar-val" style="color:rgba(36,148,106,0.8)">1.84</span></div>
+                <div class="mini-bar-track"><div class="mini-bar-fill" style="width:73%;background:rgba(36,148,106,0.6)"></div></div>
+              </div>
+              <div class="mini-bar-row">
+                <div class="mini-bar-label"><span class="mini-bar-name">Sortino Ratio</span><span class="mini-bar-val" style="color:rgba(36,148,106,0.8)">2.41</span></div>
+                <div class="mini-bar-track"><div class="mini-bar-fill" style="width:82%;background:rgba(36,148,106,0.5)"></div></div>
+              </div>
+              <div class="mini-bar-row">
+                <div class="mini-bar-label"><span class="mini-bar-name">Calmar Ratio</span><span class="mini-bar-val">1.22</span></div>
+                <div class="mini-bar-track"><div class="mini-bar-fill" style="width:55%;background:rgba(26,95,168,0.6)"></div></div>
+              </div>
+              <div class="mini-bar-row">
+                <div class="mini-bar-label"><span class="mini-bar-name">Max Drawdown</span><span class="mini-bar-val" style="color:rgba(192,57,43,0.8)">-8.3%</span></div>
+                <div class="mini-bar-track"><div class="mini-bar-fill" style="width:28%;background:rgba(192,57,43,0.55)"></div></div>
+              </div>
+              <div class="mini-bar-row">
+                <div class="mini-bar-label"><span class="mini-bar-name">Beta</span><span class="mini-bar-val">0.71</span></div>
+                <div class="mini-bar-track"><div class="mini-bar-fill" style="width:40%;background:rgba(196,124,26,0.5)"></div></div>
+              </div>
+              <div class="mini-bar-row">
+                <div class="mini-bar-label"><span class="mini-bar-name">Alpha (ann.)</span><span class="mini-bar-val" style="color:rgba(36,148,106,0.8)">+12.6%</span></div>
+                <div class="mini-bar-track"><div class="mini-bar-fill" style="width:62%;background:rgba(36,148,106,0.45)"></div></div>
+              </div>
+              <div class="mini-bar-row">
+                <div class="mini-bar-label"><span class="mini-bar-name">VaR (95%, 1d)</span><span class="mini-bar-val" style="color:rgba(192,57,43,0.8)">-1.4%</span></div>
+                <div class="mini-bar-track"><div class="mini-bar-fill" style="width:22%;background:rgba(192,57,43,0.4)"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Returns Heatmap -->
+        <div class="panel" style="min-height:0">
+          <div class="panel-header">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="rgba(36,148,106,0.7)" stroke-width="1.2"><rect x="1" y="1" width="4.5" height="4.5" rx="0.8"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="0.8"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="0.8"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="0.8"/></svg>
+            <span class="panel-title">Monthly Returns</span>
+            <span class="panel-sub">2025–2026</span>
+          </div>
+          <div class="panel-body" style="padding:10px 16px;overflow:hidden">
+            <!-- Month labels -->
+            <div style="display:grid;grid-template-columns:32px repeat(12,1fr);gap:3px;margin-bottom:4px">
+              <div></div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">J</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">F</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">M</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">A</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">M</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">J</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">J</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">A</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">S</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">O</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">N</div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);text-align:center">D</div>
+            </div>
+            <!-- 2025 row -->
+            <div style="display:grid;grid-template-columns:32px repeat(12,1fr);gap:3px;margin-bottom:3px">
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);display:flex;align-items:center">2025</div>
+              <!-- positive months teal, negative red, stronger = more opaque -->
+              <div title="+3.2%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.55);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.7)">3.2</div>
+              <div title="-1.1%" style="height:28px;border-radius:4px;background:rgba(192,57,43,0.35);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.6)">-1.1</div>
+              <div title="+5.4%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.75);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.8)">5.4</div>
+              <div title="+2.8%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.5);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.7)">2.8</div>
+              <div title="+4.1%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.65);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.75)">4.1</div>
+              <div title="-2.9%" style="height:28px;border-radius:4px;background:rgba(192,57,43,0.5);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.65)">-2.9</div>
+              <div title="+6.7%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.88);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.9)">6.7</div>
+              <div title="+1.9%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.38);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.6)">1.9</div>
+              <div title="-0.7%" style="height:28px;border-radius:4px;background:rgba(192,57,43,0.28);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.55)">-0.7</div>
+              <div title="+3.5%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.58);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.72)">3.5</div>
+              <div title="+2.2%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.44);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.65)">2.2</div>
+              <div title="+4.8%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.7);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.8)">4.8</div>
+            </div>
+            <!-- 2026 row -->
+            <div style="display:grid;grid-template-columns:32px repeat(12,1fr);gap:3px">
+              <div style="font-family:var(--mono);font-size:8px;color:var(--t4);display:flex;align-items:center">2026</div>
+              <div title="+5.1%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.73);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.8)">5.1</div>
+              <div title="+3.8%" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.6);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.75)">3.8</div>
+              <div title="-1.8%" style="height:28px;border-radius:4px;background:rgba(192,57,43,0.42);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;color:rgba(255,255,255,0.62)">-1.8</div>
+              <div title="MTD" style="height:28px;border-radius:4px;background:rgba(36,148,106,0.22);border:0.5px solid rgba(36,148,106,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7px;color:rgba(36,148,106,0.7)">MTD</div>
+              <div style="height:28px;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+              <div style="height:28px;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+              <div style="height:28px;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+              <div style="height:28px;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+              <div style="height:28px;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+              <div style="height:28px;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+              <div style="height:28px;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+              <div style="height:28px;border-radius:4px;background:rgba(255,255,255,0.04)"></div>
+            </div>
+
+            <!-- Legend -->
+            <div style="display:flex;align-items:center;gap:6px;margin-top:12px">
+              <span style="font-family:var(--mono);font-size:8.5px;color:var(--t4)">Returns:</span>
+              <div style="display:flex;gap:2px;align-items:center">
+                <div style="width:14px;height:8px;border-radius:2px;background:rgba(192,57,43,0.6)"></div>
+                <div style="width:14px;height:8px;border-radius:2px;background:rgba(192,57,43,0.35)"></div>
+                <div style="width:14px;height:8px;border-radius:2px;background:rgba(255,255,255,0.08)"></div>
+                <div style="width:14px;height:8px;border-radius:2px;background:rgba(36,148,106,0.4)"></div>
+                <div style="width:14px;height:8px;border-radius:2px;background:rgba(36,148,106,0.7)"></div>
+                <div style="width:14px;height:8px;border-radius:2px;background:rgba(36,148,106,0.9)"></div>
+              </div>
+              <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">low → high</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div><!-- /content -->
+
+  </main>
+</div>
+
+<!-- Ticker -->
+<div class="ticker">
+  <div class="ticker-lbl">Live</div>
+  <div class="ticker-track">
+    <div class="ticker-inner">
+      <span class="ti"><span class="sym">SPY</span> <span class="up">▲ 0.34%</span> 524.18</span>
+      <span class="ti"><span class="sym">QQQ</span> <span class="dn">▼ 0.12%</span> 441.05</span>
+      <span class="ti"><span class="sym">AAPL</span> <span class="up">▲ 1.02%</span> 189.74</span>
+      <span class="ti"><span class="sym">BTC/USD</span> <span class="up">▲ 2.41%</span> 68,420</span>
+      <span class="ti"><span class="sym">GLD</span> <span class="dn">▼ 0.08%</span> 231.10</span>
+      <span class="ti"><span class="sym">TSLA</span> <span class="up">▲ 0.77%</span> 177.29</span>
+      <span class="ti"><span class="sym">EUR/USD</span> <span class="dn">▼ 0.19%</span> 1.0812</span>
+      <span class="ti"><span class="sym">VIX</span> <span class="up">▲ 3.15%</span> 14.82</span>
+      <span class="ti"><span class="sym">NVDA</span> <span class="up">▲ 1.88%</span> 875.40</span>
+      <span class="ti"><span class="sym">10Y</span> <span class="dn">▼ 0.04%</span> 4.31%</span>
+      <span class="ti"><span class="sym">SPY</span> <span class="up">▲ 0.34%</span> 524.18</span>
+      <span class="ti"><span class="sym">QQQ</span> <span class="dn">▼ 0.12%</span> 441.05</span>
+      <span class="ti"><span class="sym">AAPL</span> <span class="up">▲ 1.02%</span> 189.74</span>
+      <span class="ti"><span class="sym">BTC/USD</span> <span class="up">▲ 2.41%</span> 68,420</span>
+      <span class="ti"><span class="sym">GLD</span> <span class="dn">▼ 0.08%</span> 231.10</span>
+      <span class="ti"><span class="sym">TSLA</span> <span class="up">▲ 0.77%</span> 177.29</span>
+      <span class="ti"><span class="sym">EUR/USD</span> <span class="dn">▼ 0.19%</span> 1.0812</span>
+      <span class="ti"><span class="sym">VIX</span> <span class="up">▲ 3.15%</span> 14.82</span>
+      <span class="ti"><span class="sym">NVDA</span> <span class="up">▲ 1.88%</span> 875.40</span>
+      <span class="ti"><span class="sym">10Y</span> <span class="dn">▼ 0.04%</span> 4.31%</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

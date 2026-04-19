@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fishbowl Trading Analytics — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    font-family: 'DM Sans', sans-serif;
+    background: #07101e;
+    overflow: hidden;
+  }
+
+  .scene {
+    width: 100vw; height: 100vh;
+    background:
+      radial-gradient(ellipse 60% 55% at 75% 15%, rgba(16,72,160,0.32) 0%, transparent 70%),
+      radial-gradient(ellipse 45% 40% at 15% 80%, rgba(8,115,80,0.2) 0%, transparent 65%),
+      radial-gradient(ellipse 35% 30% at 55% 60%, rgba(55,20,140,0.14) 0%, transparent 60%),
+      linear-gradient(160deg, #08101e 0%, #0b1828 50%, #071219 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  /* floating chart lines bg decoration */
+  .chart-bg {
+    position: absolute;
+    bottom: 80px; left: 0; right: 0;
+    height: 200px;
+    opacity: 0.07;
+    pointer-events: none;
+  }
+
+  .card {
+    position: relative; z-index: 10;
+    width: 380px;
+    background: rgba(255,255,255,0.055);
+    border: 0.5px solid rgba(255,255,255,0.13);
+    border-radius: 20px;
+    padding: 36px 32px 30px;
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    box-shadow:
+      0 0 0 0.5px rgba(255,255,255,0.06) inset,
+      0 1px 0 rgba(255,255,255,0.1) inset,
+      0 20px 60px rgba(0,0,0,0.55),
+      0 4px 20px rgba(0,0,0,0.3);
+    animation: fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Logo */
+  .logo-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; gap: 10px; }
+  .logo-svg { animation: fadeUp 0.6s 0.1s cubic-bezier(0.22,1,0.36,1) both; }
+
+  .brand-name {
+    font-size: 16px; font-weight: 500;
+    color: rgba(255,255,255,0.88);
+    letter-spacing: 0.02em; text-align: center;
+  }
+  .brand-tagline {
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px; font-weight: 300;
+    color: rgba(255,255,255,0.28);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    text-align: center;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(36,148,102,0.1);
+    border: 0.5px solid rgba(36,148,102,0.25);
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 9px; font-weight: 400;
+    color: rgba(36,148,102,0.8);
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  .sep { width: 100%; height: 0.5px; background: rgba(255,255,255,0.08); margin-bottom: 22px; }
+
+  .field { margin-bottom: 14px; }
+  .lbl {
+    display: block; font-size: 9.5px; font-weight: 400;
+    color: rgba(255,255,255,0.35); letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 7px;
+  }
+  .inp {
+    width: 100%;
+    background: rgba(255,255,255,0.055);
+    border: 0.5px solid rgba(255,255,255,0.11);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.82);
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 300;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    -webkit-appearance: none;
+  }
+  .inp::placeholder { color: rgba(255,255,255,0.18); font-weight: 300; }
+  .inp:focus {
+    border-color: rgba(36,148,102,0.5);
+    background: rgba(255,255,255,0.08);
+  }
+
+  .row-mid {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 18px;
+  }
+  .chk-row { display: flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
+  .chk {
+    width: 15px; height: 15px; border-radius: 4px;
+    border: 0.5px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.04);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .chk-lbl { font-size: 12px; color: rgba(255,255,255,0.3); }
+  .forgot { font-size: 12px; color: rgba(36,148,102,0.72); cursor: pointer; text-decoration: none; transition: color 0.2s; }
+  .forgot:hover { color: rgba(36,148,102,0.95); }
+
+  .btn-main {
+    width: 100%; padding: 12px;
+    background: linear-gradient(135deg, rgba(22,110,80,0.9) 0%, rgba(14,80,150,0.8) 100%);
+    border: 0.5px solid rgba(36,148,102,0.32);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.92); font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px; font-weight: 500;
+    cursor: pointer; letter-spacing: 0.03em;
+    box-shadow: 0 2px 24px rgba(14,100,70,0.3);
+    margin-bottom: 18px;
+    transition: opacity 0.2s, box-shadow 0.2s, transform 0.15s;
+  }
+  .btn-main:hover { opacity: 0.88; box-shadow: 0 4px 32px rgba(14,100,70,0.45); transform: translateY(-1px); }
+  .btn-main:active { transform: translateY(0); }
+
+  .or-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .or-line { flex: 1; height: 0.5px; background: rgba(255,255,255,0.07); }
+  .or-txt { font-size: 10px; color: rgba(255,255,255,0.2); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .btn-alt {
+    width: 100%; padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 0.5px solid rgba(255,255,255,0.09);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.45); font-family: 'DM Sans', sans-serif;
+    font-size: 12.5px; font-weight: 400;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 8px;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .btn-alt:last-of-type { margin-bottom: 0; }
+  .btn-alt:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.65); }
+
+  .foot {
+    text-align: center; font-size: 11px;
+    color: rgba(255,255,255,0.2); margin-top: 20px; line-height: 1.8;
+  }
+  .foot a { color: rgba(36,148,102,0.65); cursor: pointer; text-decoration: none; }
+  .foot a:hover { color: rgba(36,148,102,0.9); }
+
+  /* Ticker */
+  .ticker {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 32px;
+    background: rgba(4,9,18,0.7); border-top: 0.5px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; overflow: hidden; z-index: 50;
+    backdrop-filter: blur(10px);
+  }
+  .ticker-label {
+    flex-shrink: 0; padding: 0 14px;
+    font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 400;
+    color: rgba(36,148,102,0.6); letter-spacing: 0.15em; text-transform: uppercase;
+    border-right: 0.5px solid rgba(255,255,255,0.07);
+    height: 100%; display: flex; align-items: center;
+  }
+  .ticker-track { flex: 1; overflow: hidden; }
+  .ticker-inner {
+    display: flex; gap: 32px; white-space: nowrap;
+    animation: scroll 28s linear infinite;
+    padding-left: 60px;
+  }
+  .ti {
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 300;
+    color: rgba(255,255,255,0.3); display: flex; align-items: center; gap: 5px;
+  }
+  .ti .sym { color: rgba(255,255,255,0.45); font-weight: 400; }
+  .up { color: rgba(36,148,102,0.8); }
+  .dn { color: rgba(210,65,65,0.8); }
+  @keyframes scroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+</style>
+</head>
+<body>
+
+<div class="scene">
+  <div class="grid"></div>
+
+  <!-- Decorative SVG chart lines in background -->
+  <svg class="chart-bg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="0,140 120,110 200,125 310,80 420,95 500,60 620,75 700,40 820,55 900,30 1020,45 1100,20 1220,35 1340,15 1440,28" fill="none" stroke="rgba(36,148,102,1)" stroke-width="1.5"/>
+    <polyline points="0,170 150,155 250,162 380,140 480,148 580,130 680,138 800,115 920,122 1040,100 1150,108 1280,90 1440,95" fill="none" stroke="rgba(14,80,150,1)" stroke-width="1"/>
+  </svg>
+
+  <div class="card">
+    <!-- Logo -->
+    <div class="logo-wrap">
+      <svg class="logo-svg" width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Bowl glass outer -->
+        <circle cx="30" cy="27" r="21" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)" stroke-width="0.75"/>
+        <!-- Teal rim glow -->
+        <circle cx="30" cy="27" r="21" fill="none" stroke="rgba(36,148,102,0.28)" stroke-width="1"/>
+        <!-- Water fill -->
+        <ellipse cx="30" cy="27" rx="14.5" ry="14.5" fill="rgba(14,60,130,0.18)" stroke="rgba(36,148,102,0.15)" stroke-width="0.5"/>
+        <!-- Glass shine -->
+        <ellipse cx="22" cy="18" rx="5" ry="3" fill="rgba(255,255,255,0.04)" transform="rotate(-35 22 18)"/>
+        <!-- Fish 1 - larger -->
+        <path d="M19 27 Q24 20 30 24 Q35 28 39 22" stroke="rgba(36,148,102,0.85)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <!-- Fish 1 tail -->
+        <path d="M19 27 Q16 24 16 27 Q16 30 19 27" fill="rgba(36,148,102,0.5)"/>
+        <!-- Fish 1 eye -->
+        <circle cx="22" cy="23.5" r="1.5" fill="rgba(255,255,255,0.75)"/>
+        <circle cx="22.4" cy="23.1" r="0.5" fill="rgba(20,20,40,0.8)"/>
+        <!-- Fish 2 - smaller -->
+        <path d="M23 33 Q27 29 32 31.5" stroke="rgba(14,100,170,0.7)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        <circle cx="35" cy="31" r="1.6" fill="rgba(14,100,170,0.55)" stroke="rgba(36,148,102,0.25)" stroke-width="0.5"/>
+        <circle cx="35.5" cy="30.5" r="0.5" fill="rgba(255,255,255,0.65)"/>
+        <!-- Bowl stand -->
+        <ellipse cx="30" cy="46.5" rx="9" ry="2" fill="rgba(36,148,102,0.1)" stroke="rgba(36,148,102,0.28)" stroke-width="0.5"/>
+        <rect x="28" y="47.5" width="4" height="5.5" rx="1.5" fill="rgba(36,148,102,0.12)" stroke="rgba(36,148,102,0.25)" stroke-width="0.5"/>
+        <ellipse cx="30" cy="53.5" rx="7" ry="1.5" fill="rgba(36,148,102,0.08)" stroke="rgba(36,148,102,0.2)" stroke-width="0.5"/>
+        <!-- Bubble details -->
+        <circle cx="37" cy="18" r="1" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+        <circle cx="34" cy="15" r="0.6" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.4"/>
+      </svg>
+
+      <div>
+        <div class="brand-name">Fishbowl Trading Analytics</div>
+        <div class="brand-tagline" style="margin-top:4px">Strategy · Backtest · Evaluate</div>
+      </div>
+      <div class="badge">
+        <svg width="7" height="8" viewBox="0 0 7 8" fill="none"><path d="M3.5 0.5L0.8 2v2.5C0.8 6.2 2 7.4 3.5 7.7c1.5-.3 2.7-1.5 2.7-3.2V2L3.5 0.5z" fill="rgba(36,148,102,0.9)"/></svg>
+        256-bit TLS encrypted
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="field">
+      <label class="lbl">Email address</label>
+      <input class="inp" type="email" placeholder="you@institution.com" />
+    </div>
+
+    <div class="field" style="margin-bottom:18px">
+      <label class="lbl">Password</label>
+      <input class="inp" type="password" placeholder="••••••••••••" />
+    </div>
+
+    <div class="row-mid">
+      <div class="chk-row">
+        <div class="chk">
+          <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2.2 2.2 3.8-3.8" stroke="rgba(36,148,102,0.85)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="chk-lbl">Remember me</span>
+      </div>
+      <a class="forgot">Forgot password?</a>
+    </div>
+
+    <button class="btn-main">Sign in to dashboard</button>
+
+    <div class="or-row">
+      <div class="or-line"></div>
+      <span class="or-txt">or</span>
+      <div class="or-line"></div>
+    </div>
+
+    <button class="btn-alt">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0.5" y="0.5" width="5.5" height="5.5" rx="1.2" fill="rgba(255,255,255,0.3)"/><rect x="8" y="0.5" width="5.5" height="5.5" rx="1.2" fill="rgba(255,255,255,0.18)"/><rect x="0.5" y="8" width="5.5" height="5.5" rx="1.2" fill="rgba(255,255,255,0.18)"/><rect x="8" y="8" width="5.5" height="5.5" rx="1.2" fill="rgba(255,255,255,0.3)"/></svg>
+      Continue with SSO
+    </button>
+
+    <button class="btn-alt">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.2" stroke="rgba(255,255,255,0.25)" stroke-width="0.7" fill="none"/><ellipse cx="7" cy="7" rx="2.8" ry="6.2" stroke="rgba(255,255,255,0.14)" stroke-width="0.7" fill="none"/><line x1="0.8" y1="7" x2="13.2" y2="7" stroke="rgba(255,255,255,0.14)" stroke-width="0.7"/></svg>
+      Continue with Google Workspace
+    </button>
+
+    <div class="foot">
+      No account? <a>Request institutional access</a><br>
+      By signing in you agree to our <a>Terms</a> &amp; <a>Privacy Policy</a>
+    </div>
+  </div>
+</div>
+
+<!-- Ticker -->
+<div class="ticker">
+  <div class="ticker-label">Live</div>
+  <div class="ticker-track">
+    <div class="ticker-inner">
+      <span class="ti"><span class="sym">SPY</span> <span class="up">▲ 0.34%</span> 524.18</span>
+      <span class="ti"><span class="sym">QQQ</span> <span class="dn">▼ 0.12%</span> 441.05</span>
+      <span class="ti"><span class="sym">AAPL</span> <span class="up">▲ 1.02%</span> 189.74</span>
+      <span class="ti"><span class="sym">BTC/USD</span> <span class="up">▲ 2.41%</span> 68,420</span>
+      <span class="ti"><span class="sym">GLD</span> <span class="dn">▼ 0.08%</span> 231.10</span>
+      <span class="ti"><span class="sym">TSLA</span> <span class="up">▲ 0.77%</span> 177.29</span>
+      <span class="ti"><span class="sym">EUR/USD</span> <span class="dn">▼ 0.19%</span> 1.0812</span>
+      <span class="ti"><span class="sym">VIX</span> <span class="up">▲ 3.15%</span> 14.82</span>
+      <span class="ti"><span class="sym">NVDA</span> <span class="up">▲ 1.88%</span> 875.40</span>
+      <span class="ti"><span class="sym">10Y</span> <span class="dn">▼ 0.04%</span> 4.31%</span>
+      <span class="ti"><span class="sym">SPY</span> <span class="up">▲ 0.34%</span> 524.18</span>
+      <span class="ti"><span class="sym">QQQ</span> <span class="dn">▼ 0.12%</span> 441.05</span>
+      <span class="ti"><span class="sym">AAPL</span> <span class="up">▲ 1.02%</span> 189.74</span>
+      <span class="ti"><span class="sym">BTC/USD</span> <span class="up">▲ 2.41%</span> 68,420</span>
+      <span class="ti"><span class="sym">GLD</span> <span class="dn">▼ 0.08%</span> 231.10</span>
+      <span class="ti"><span class="sym">TSLA</span> <span class="up">▲ 0.77%</span> 177.29</span>
+      <span class="ti"><span class="sym">EUR/USD</span> <span class="dn">▼ 0.19%</span> 1.0812</span>
+      <span class="ti"><span class="sym">VIX</span> <span class="up">▲ 3.15%</span> 14.82</span>
+      <span class="ti"><span class="sym">NVDA</span> <span class="up">▲ 1.88%</span> 875.40</span>
+      <span class="ti"><span class="sym">10Y</span> <span class="dn">▼ 0.04%</span> 4.31%</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

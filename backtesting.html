@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fishbowl — Backtesting Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#07101e;--bg2:#0b1828;--bg3:#0d1f35;
+  --glass:rgba(255,255,255,0.042);--glass2:rgba(255,255,255,0.072);
+  --b1:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.13);
+  --teal:#24946a;--tealA:rgba(36,148,106,0.18);--tealB:rgba(36,148,106,0.08);
+  --blue:#1a5fa8;--blueA:rgba(26,95,168,0.2);
+  --red:#c0392b;--redA:rgba(192,57,43,0.15);
+  --amber:#c47c1a;--amberA:rgba(196,124,26,0.15);
+  --t1:rgba(255,255,255,0.88);--t2:rgba(255,255,255,0.52);
+  --t3:rgba(255,255,255,0.28);--t4:rgba(255,255,255,0.14);
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --radius:10px;
+}
+html,body{width:100%;height:100%;font-family:var(--sans);background:var(--bg);color:var(--t1);overflow:hidden;}
+
+/* ── APP SHELL ── */
+.app{display:grid;grid-template-columns:210px 1fr;height:100vh;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sb{background:rgba(6,12,22,0.98);border-right:0.5px solid var(--b1);display:flex;flex-direction:column;overflow:hidden;z-index:20;}
+.sb-logo{padding:18px 16px 15px;border-bottom:0.5px solid var(--b1);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.sb-logo .lt1{font-size:13px;font-weight:500;color:var(--t1);}
+.sb-logo .lt2{font-family:var(--mono);font-size:8px;font-weight:300;color:var(--t4);letter-spacing:.14em;text-transform:uppercase;margin-top:2px;}
+.sb-sec{padding:14px 10px 6px;flex-shrink:0;}
+.sb-lbl{font-family:var(--mono);font-size:7.5px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;padding:0 8px;margin-bottom:5px;}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:12.5px;color:var(--t3);cursor:pointer;margin-bottom:1px;transition:background .15s,color .15s;user-select:none;}
+.ni:hover{background:var(--glass2);color:var(--t2);}
+.ni.on{background:rgba(36,148,106,0.11);color:rgba(36,148,106,0.88);}
+.ni svg{width:14px;height:14px;opacity:.45;flex-shrink:0;}
+.ni.on svg{opacity:.9;}
+.nb{margin-left:auto;background:rgba(36,148,106,0.18);border:0.5px solid rgba(36,148,106,0.28);color:rgba(36,148,106,0.85);font-size:8.5px;font-family:var(--mono);padding:1px 6px;border-radius:10px;}
+.sb-fill{flex:1;}
+.sb-user{padding:12px 14px;border-top:0.5px solid var(--b1);display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(36,148,106,.6),rgba(26,95,168,.6));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:rgba(255,255,255,.85);flex-shrink:0;}
+.u1{font-size:11.5px;font-weight:500;color:var(--t2);}
+.u2{font-size:9.5px;color:var(--t4);margin-top:1px;}
+
+/* ── MAIN AREA ── */
+.main{display:grid;grid-template-rows:50px 1fr 28px;overflow:hidden;}
+
+/* Topbar */
+.topbar{border-bottom:0.5px solid var(--b1);display:flex;align-items:center;padding:0 20px;gap:12px;background:rgba(6,12,22,.85);backdrop-filter:blur(10px);flex-shrink:0;}
+.tb-title{font-size:13.5px;font-weight:500;color:var(--t1);}
+.tb-crumb{font-size:11px;color:var(--t4);margin-left:1px;}
+.spacer{flex:1;}
+.tb-pill{display:flex;align-items:center;gap:5px;background:var(--glass);border:0.5px solid var(--b2);border-radius:20px;padding:4px 11px;font-size:10.5px;color:var(--t3);}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.tb-btn{background:var(--glass);border:0.5px solid var(--b2);border-radius:8px;padding:5px 12px;font-size:11.5px;color:var(--t2);cursor:pointer;font-family:var(--sans);transition:background .15s;}
+.tb-btn:hover{background:var(--glass2);}
+.tb-btn.run{background:rgba(36,148,106,.18);border-color:rgba(36,148,106,.35);color:rgba(36,148,106,.92);font-weight:500;}
+.tb-btn.run:hover{background:rgba(36,148,106,.26);}
+.tb-btn.run.running{background:rgba(192,57,43,.15);border-color:rgba(192,57,43,.3);color:rgba(220,90,80,.85);}
+
+/* ── WORKSPACE ── */
+.workspace{display:grid;grid-template-columns:300px 1fr;overflow:hidden;}
+
+/* ── CONFIG PANEL ── */
+.config{border-right:0.5px solid var(--b1);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;background:rgba(6,12,22,.6);}
+.config::-webkit-scrollbar{width:3px;}
+.config::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+.cfg-section{border-bottom:0.5px solid var(--b1);padding:14px 16px;}
+.cfg-section:last-child{border-bottom:none;}
+.cfg-hd{font-family:var(--mono);font-size:8px;font-weight:400;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.cfg-hd span{font-size:9px;color:rgba(36,148,106,.6);cursor:pointer;}
+
+.field{margin-bottom:11px;}
+.field:last-child{margin-bottom:0;}
+.lbl{display:block;font-size:10px;color:var(--t3);margin-bottom:5px;font-family:var(--mono);letter-spacing:.04em;}
+
+select,input[type=text],input[type=number],input[type=date]{
+  width:100%;background:rgba(255,255,255,.05);border:0.5px solid var(--b1);
+  border-radius:7px;color:var(--t1);font-family:var(--mono);font-size:12px;
+  padding:8px 10px;outline:none;transition:border-color .2s,background .2s;
+  -webkit-appearance:none;appearance:none;
+}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.3)' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+select:focus,input:focus{border-color:rgba(36,148,106,.45);background:rgba(255,255,255,.07);}
+select option{background:#0b1828;color:rgba(255,255,255,.82);}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* Range slider */
+.range-wrap{display:flex;align-items:center;gap:8px;}
+input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.1);outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--teal);border:2px solid rgba(255,255,255,.25);cursor:pointer;}
+.range-val{font-family:var(--mono);font-size:11px;color:rgba(36,148,106,.8);min-width:36px;text-align:right;}
+
+/* Toggle */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;}
+.toggle-lbl{font-size:11.5px;color:var(--t2);}
+.toggle{width:32px;height:18px;border-radius:9px;background:rgba(255,255,255,.1);border:0.5px solid var(--b1);position:relative;cursor:pointer;transition:background .2s;}
+.toggle.on{background:rgba(36,148,106,.5);border-color:rgba(36,148,106,.4);}
+.toggle-knob{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.6);transition:left .2s,background .2s;}
+.toggle.on .toggle-knob{left:16px;background:rgba(255,255,255,.92);}
+
+/* Indicator tags */
+.ind-tags{display:flex;flex-wrap:wrap;gap:5px;}
+.ind-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:20px;background:rgba(36,148,106,.1);border:0.5px solid rgba(36,148,106,.22);color:rgba(36,148,106,.8);cursor:pointer;transition:background .15s;}
+.ind-tag:hover{background:rgba(36,148,106,.18);}
+.ind-tag.blue{background:var(--blueA);border-color:rgba(26,95,168,.3);color:rgba(80,150,230,.8);}
+.ind-tag.amber{background:var(--amberA);border-color:rgba(196,124,26,.3);color:rgba(220,160,60,.8);}
+.ind-tag .x{opacity:.5;margin-left:2px;}
+.add-ind{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--mono);padding:3px 9px;border-radius:20px;background:transparent;border:0.5px dashed var(--b2);color:var(--t4);cursor:pointer;transition:border-color .15s,color .15s;}
+.add-ind:hover{border-color:rgba(36,148,106,.35);color:rgba(36,148,106,.6);}
+
+/* Run progress */
+.run-bar-wrap{margin-top:4px;}
+.run-bar-track{height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;}
+.run-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,rgba(36,148,106,.7),rgba(26,95,168,.6));border-radius:2px;transition:width .1s linear;}
+.run-status{display:flex;justify-content:space-between;margin-top:5px;}
+.run-status span{font-family:var(--mono);font-size:9px;color:var(--t4);}
+.run-status .pct{color:rgba(36,148,106,.75);}
+
+/* ── RESULTS AREA ── */
+.results{display:grid;grid-template-rows:auto 1fr auto;overflow:hidden;}
+
+/* Tabs */
+.tabs{display:flex;align-items:center;border-bottom:0.5px solid var(--b1);padding:0 20px;gap:0;flex-shrink:0;}
+.tab{font-size:12px;color:var(--t3);padding:13px 16px 11px;border-bottom:1.5px solid transparent;cursor:pointer;transition:color .15s;white-space:nowrap;font-weight:400;}
+.tab:hover{color:var(--t2);}
+.tab.on{color:rgba(36,148,106,.9);border-bottom-color:rgba(36,148,106,.7);}
+.tabs-spacer{flex:1;}
+.tab-meta{font-family:var(--mono);font-size:9px;color:var(--t4);display:flex;align-items:center;gap:10px;}
+
+/* Tab panes */
+.pane{display:none;flex-direction:column;overflow:hidden;flex:1;}
+.pane.on{display:flex;}
+
+/* ── CHART PANE ── */
+.chart-pane{padding:16px 20px;flex:1;overflow:hidden;display:flex;flex-direction:column;gap:14px;}
+
+.metrics-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;flex-shrink:0;}
+.mc{background:var(--glass);border:0.5px solid var(--b1);border-radius:9px;padding:10px 12px;position:relative;overflow:hidden;}
+.mc::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);}
+.mc-lbl{font-family:var(--mono);font-size:7.5px;color:var(--t4);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;}
+.mc-val{font-family:var(--mono);font-size:16px;font-weight:400;line-height:1;color:var(--t1);}
+.mc-val.pos{color:rgba(36,148,106,.88);}
+.mc-val.neg{color:rgba(192,57,43,.85);}
+.mc-sub{font-size:9px;color:var(--t3);margin-top:3px;}
+
+.chart-area{flex:1;display:grid;grid-template-rows:1fr 90px;gap:8px;min-height:0;}
+
+.chart-box{background:var(--glass);border:0.5px solid var(--b1);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+.chart-head{padding:10px 14px;border-bottom:0.5px solid var(--b1);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.ch-title{font-size:11px;font-weight:500;color:var(--t2);}
+.ch-legend{display:flex;gap:12px;margin-left:8px;}
+.ch-leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--t3);font-family:var(--mono);}
+.ch-leg-dot{width:6px;height:3px;border-radius:1px;}
+.ch-spacer{flex:1;}
+.ch-range{display:flex;gap:4px;}
+.ch-r{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;color:var(--t4);cursor:pointer;border:0.5px solid transparent;transition:all .15s;}
+.ch-r:hover{color:var(--t3);}
+.ch-r.on{background:var(--glass2);border-color:var(--b1);color:rgba(36,148,106,.8);}
+.chart-svg-wrap{flex:1;overflow:hidden;padding:8px 14px 4px;}
+
+/* ── TRADE LOG ── */
+.tradelog-pane{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.tl-filters{padding:10px 20px;border-bottom:0.5px solid var(--b1);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.tl-search{flex:1;background:var(--glass);border:0.5px solid var(--b1);border-radius:7px;padding:7px 12px;font-family:var(--mono);font-size:11.5px;color:var(--t1);outline:none;}
+.tl-search::placeholder{color:var(--t4);}
+.filter-btn{background:var(--glass);border:0.5px solid var(--b1);border-radius:7px;padding:6px 12px;font-size:11px;color:var(--t3);cursor:pointer;font-family:var(--mono);white-space:nowrap;transition:all .15s;}
+.filter-btn:hover,.filter-btn.on{background:var(--glass2);border-color:var(--b2);color:var(--t2);}
+.filter-btn.on{color:rgba(36,148,106,.85);border-color:rgba(36,148,106,.25);}
+
+.tl-table-wrap{flex:1;overflow-y:auto;overflow-x:hidden;}
+.tl-table-wrap::-webkit-scrollbar{width:3px;}
+.tl-table-wrap::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+table.tl{width:100%;border-collapse:collapse;}
+table.tl thead th{position:sticky;top:0;background:rgba(7,16,30,.97);font-family:var(--mono);font-size:8px;font-weight:400;color:var(--t4);letter-spacing:.1em;text-transform:uppercase;padding:10px 10px 10px 20px;text-align:left;border-bottom:0.5px solid var(--b1);white-space:nowrap;z-index:2;}
+table.tl td{font-size:11px;color:var(--t2);padding:8px 10px 8px 20px;border-bottom:0.5px solid rgba(255,255,255,.03);font-family:var(--mono);vertical-align:middle;white-space:nowrap;}
+table.tl tr:hover td{background:rgba(255,255,255,.022);}
+table.tl td.sym{color:var(--t1);font-weight:500;font-family:var(--sans);font-size:12px;}
+table.tl td.pos{color:rgba(36,148,106,.85);}
+table.tl td.neg{color:rgba(192,57,43,.82);}
+.dir-pill{display:inline-block;font-size:8.5px;font-family:var(--mono);padding:2px 7px;border-radius:10px;letter-spacing:.06em;}
+.dir-pill.long{background:rgba(36,148,106,.12);color:rgba(36,148,106,.82);border:0.5px solid rgba(36,148,106,.22);}
+.dir-pill.short{background:rgba(192,57,43,.12);color:rgba(192,57,43,.78);border:0.5px solid rgba(192,57,43,.2);}
+.bar-inline{display:flex;align-items:center;gap:6px;}
+.bar-mini{height:3px;border-radius:2px;min-width:4px;}
+
+/* ── OPTIMIZATION ── */
+.opt-pane{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;overflow:hidden;}
+.opt-left{border-right:0.5px solid var(--b1);padding:16px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.opt-right{padding:16px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.opt-left::-webkit-scrollbar,.opt-right::-webkit-scrollbar{width:3px;}
+.opt-left::-webkit-scrollbar-thumb,.opt-right::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+.param-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.param-card{background:var(--glass);border:0.5px solid var(--b1);border-radius:8px;padding:10px 12px;cursor:pointer;transition:border-color .15s;}
+.param-card:hover,.param-card.sel{border-color:rgba(36,148,106,.35);}
+.param-card.sel{background:rgba(36,148,106,.07);}
+.pc-name{font-size:11px;color:var(--t1);font-weight:500;margin-bottom:4px;}
+.pc-range{font-family:var(--mono);font-size:9.5px;color:var(--t3);}
+.pc-check{width:12px;height:12px;border-radius:3px;border:0.5px solid var(--b2);background:rgba(255,255,255,.04);float:right;margin-top:-20px;display:flex;align-items:center;justify-content:center;}
+.pc-check.on{background:rgba(36,148,106,.5);border-color:rgba(36,148,106,.5);}
+
+/* Heatmap */
+.heatmap-wrap{overflow-x:auto;}
+.heatmap-grid{display:inline-grid;gap:3px;}
+.hm-cell{width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:7.5px;cursor:pointer;transition:opacity .15s;}
+.hm-cell:hover{opacity:.75;outline:1px solid rgba(255,255,255,.3);}
+.hm-label{font-family:var(--mono);font-size:8.5px;color:var(--t4);text-align:center;}
+
+/* Statusbar */
+.statusbar{height:28px;border-top:0.5px solid var(--b1);display:flex;align-items:center;padding:0 16px;gap:16px;background:rgba(4,9,18,.9);flex-shrink:0;}
+.sb-item{font-family:var(--mono);font-size:9px;color:var(--t4);display:flex;align-items:center;gap:5px;}
+.sb-item .val{color:var(--t3);}
+.sb-item .pos{color:rgba(36,148,106,.7);}
+.sb-item .neg{color:rgba(192,57,43,.7);}
+
+/* Ticker */
+.ticker{height:28px;background:rgba(4,9,18,.88);border-top:0.5px solid var(--b1);display:flex;align-items:center;overflow:hidden;grid-column:1/-1;}
+.tk-lbl{flex-shrink:0;padding:0 12px;font-family:var(--mono);font-size:8px;color:rgba(36,148,106,.6);letter-spacing:.15em;text-transform:uppercase;border-right:0.5px solid var(--b1);height:100%;display:flex;align-items:center;}
+.tk-track{flex:1;overflow:hidden;}
+.tk-inner{display:flex;gap:28px;white-space:nowrap;animation:scroll 30s linear infinite;padding-left:30px;}
+.ti{font-family:var(--mono);font-size:9.5px;color:var(--t3);display:flex;align-items:center;gap:4px;}
+.ti .s{color:rgba(255,255,255,.4);font-weight:400;}
+.up{color:rgba(36,148,106,.8);}.dn{color:rgba(192,57,43,.75);}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* Tooltip */
+.tooltip{position:fixed;background:rgba(8,18,34,.97);border:0.5px solid var(--b2);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:10.5px;color:var(--t2);pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;min-width:120px;}
+.tooltip.show{opacity:1;}
+.tooltip .tth{color:var(--t4);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- ── SIDEBAR ── -->
+<aside class="sb">
+  <div class="sb-logo">
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+      <circle cx="15" cy="13" r="10.5" fill="rgba(255,255,255,0.03)" stroke="rgba(36,148,106,0.3)" stroke-width="0.75"/>
+      <circle cx="15" cy="13" r="10.5" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4.5"/>
+      <ellipse cx="15" cy="13" rx="7" ry="7" fill="rgba(14,60,130,0.2)" stroke="rgba(36,148,106,0.15)" stroke-width="0.5"/>
+      <path d="M9 13 Q12 9 15 11.5 Q18 14 20.5 10.5" stroke="rgba(36,148,106,0.9)" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      <path d="M9 13 Q7.5 11.5 7.5 13 Q7.5 14.5 9 13" fill="rgba(36,148,106,0.55)"/>
+      <circle cx="10.5" cy="11" r="1" fill="rgba(255,255,255,0.75)"/>
+      <circle cx="10.8" cy="10.7" r="0.3" fill="rgba(10,10,30,0.8)"/>
+      <circle cx="18.5" cy="15" r="1.2" fill="rgba(26,95,168,0.6)" stroke="rgba(36,148,106,0.22)" stroke-width="0.4"/>
+      <ellipse cx="15" cy="22.5" rx="4.5" ry="1.1" fill="rgba(36,148,106,0.1)" stroke="rgba(36,148,106,0.22)" stroke-width="0.5"/>
+      <rect x="13.5" y="23.3" width="3" height="3.5" rx="1" fill="rgba(36,148,106,0.12)" stroke="rgba(36,148,106,0.2)" stroke-width="0.5"/>
+    </svg>
+    <div><div class="lt1">Fishbowl</div><div class="lt2">Trading Analytics</div></div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Overview</div>
+    <div class="ni"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="4.5" height="4.5" rx="0.8"/><rect x="8.5" y="1" width="4.5" height="4.5" rx="0.8"/><rect x="1" y="8.5" width="4.5" height="4.5" rx="0.8"/><rect x="8.5" y="8.5" width="4.5" height="4.5" rx="0.8"/></svg>Dashboard</div>
+    <div class="ni"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><polyline points="1,11 4,6 7,8 10,3 13,5"/></svg>Performance</div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Strategies</div>
+    <div class="ni on"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="3.5" x2="7" y2="7.5"/><line x1="7" y1="7.5" x2="9.5" y2="9"/></svg>Backtesting<span class="nb">3</span></div>
+    <div class="ni"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 11 L5 3.5 L7 7.5 L9.5 5 L12 9"/><circle cx="5" cy="3.5" r="1" fill="currentColor" stroke="none"/><circle cx="9.5" cy="5" r="1" fill="currentColor" stroke="none"/></svg>Strategy Builder</div>
+    <div class="ni"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M7 1 L13 4.5 L13 9.5 L7 13 L1 9.5 L1 4.5 Z"/></svg>Optimization</div>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-lbl">Analysis</div>
+    <div class="ni"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="6" width="3" height="7" rx="0.5"/><rect x="5.5" y="3.5" width="3" height="9.5" rx="0.5"/><rect x="10" y="1" width="3" height="12" rx="0.5"/></svg>Risk Metrics</div>
+    <div class="ni"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="5.5" cy="5.5" r="4"/><line x1="8.5" y1="8.5" x2="13" y2="13"/></svg>Trade Journal</div>
+    <div class="ni"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 3.5h12M1 7h9M1 10.5h10.5"/></svg>Reports</div>
+  </div>
+  <div class="sb-fill"></div>
+  <div class="sb-sec" style="padding-bottom:10px">
+    <div class="ni"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7" cy="4.5" r="2.5"/><path d="M1.5 12.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>Settings</div>
+  </div>
+  <div class="sb-user">
+    <div class="av">JR</div>
+    <div><div class="u1">J. Reyes</div><div class="u2">Pro · Institutional</div></div>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<main class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div><span class="tb-title">Backtesting</span><span class="tb-crumb"> / RSI-MACD Momentum v4.2</span></div>
+    <div class="spacer"></div>
+    <div class="tb-pill"><div class="dot"></div>Data: Jan 1 2020 – Apr 19 2026</div>
+    <button class="tb-btn">Save Config</button>
+    <button class="tb-btn">Duplicate</button>
+    <button class="tb-btn run" id="runBtn" onclick="toggleRun()">▶ Run Backtest</button>
+  </div>
+
+  <!-- Workspace -->
+  <div class="workspace">
+
+    <!-- Config Panel -->
+    <div class="config" id="configPanel">
+
+      <div class="cfg-section">
+        <div class="cfg-hd">Strategy Config <span onclick="resetConfig()">Reset</span></div>
+        <div class="field">
+          <label class="lbl">Strategy Template</label>
+          <select id="stratSelect" onchange="updateStrategy()">
+            <option>RSI-MACD Momentum</option>
+            <option>Bollinger Mean Reversion</option>
+            <option>MA Crossover</option>
+            <option>Pairs Trading</option>
+            <option>Custom</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">Universe / Instruments</label>
+          <select id="uniSelect">
+            <option>SPY, QQQ, AAPL, MSFT, NVDA</option>
+            <option>S&P 500 Top 50</option>
+            <option>NASDAQ 100</option>
+            <option>Custom Watchlist</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="lbl">Start Date</label>
+            <input type="date" value="2020-01-01"/>
+          </div>
+          <div class="field">
+            <label class="lbl">End Date</label>
+            <input type="date" value="2026-04-19"/>
+          </div>
+        </div>
+        <div class="field">
+          <label class="lbl">Timeframe</label>
+          <select id="tfSelect">
+            <option>Daily (1D)</option>
+            <option>4 Hour (4H)</option>
+            <option>1 Hour (1H)</option>
+            <option>15 Min (15m)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-hd">Capital & Execution</div>
+        <div class="field">
+          <label class="lbl">Initial Capital ($)</label>
+          <input type="number" value="100000" id="capitalInput"/>
+        </div>
+        <div class="field">
+          <label class="lbl">Position Size (% of equity)</label>
+          <div class="range-wrap">
+            <input type="range" min="1" max="100" value="10" id="posSize" oninput="document.getElementById('posSizeVal').textContent=this.value+'%'"/>
+            <span class="range-val" id="posSizeVal">10%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="lbl">Commission (per trade)</label>
+          <div class="range-wrap">
+            <input type="range" min="0" max="50" value="5" id="commInput" step="0.5" oninput="document.getElementById('commVal').textContent='$'+parseFloat(this.value).toFixed(1)"/>
+            <span class="range-val" id="commVal">$5.0</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="lbl">Slippage (bps)</label>
+          <div class="range-wrap">
+            <input type="range" min="0" max="30" value="3" id="slipInput" oninput="document.getElementById('slipVal').textContent=this.value+'bps'"/>
+            <span class="range-val" id="slipVal">3bps</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="lbl">Execution</label>
+          <select>
+            <option>Market Order (Next Open)</option>
+            <option>Limit Order</option>
+            <option>Close of Signal Bar</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-hd">Indicators</div>
+        <div class="ind-tags" id="indTags">
+          <span class="ind-tag">RSI(14) <span class="x">×</span></span>
+          <span class="ind-tag">MACD(12,26,9) <span class="x">×</span></span>
+          <span class="ind-tag blue">EMA(50) <span class="x">×</span></span>
+          <span class="ind-tag amber">ATR(14) <span class="x">×</span></span>
+          <span class="add-ind" onclick="addIndicator()">+ Add</span>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-hd">Risk Controls</div>
+        <div class="field">
+          <label class="lbl">Stop Loss (%)</label>
+          <div class="range-wrap">
+            <input type="range" min="0.5" max="20" value="3" step="0.5" id="slStop" oninput="document.getElementById('slVal').textContent='-'+parseFloat(this.value).toFixed(1)+'%'"/>
+            <span class="range-val" id="slVal">-3.0%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="lbl">Take Profit (%)</label>
+          <div class="range-wrap">
+            <input type="range" min="1" max="50" value="9" step="0.5" id="tpStop" oninput="document.getElementById('tpVal').textContent='+'+parseFloat(this.value).toFixed(1)+'%'"/>
+            <span class="range-val" id="tpVal">+9.0%</span>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">Trailing Stop</span>
+          <div class="toggle on" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">Max Drawdown Halt</span>
+          <div class="toggle" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-lbl">Pyramiding</span>
+          <div class="toggle" onclick="this.classList.toggle('on')"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="cfg-section" id="progressSection" style="display:none">
+        <div class="cfg-hd">Simulation Progress</div>
+        <div class="run-bar-wrap">
+          <div class="run-bar-track"><div class="run-bar-fill" id="runBarFill"></div></div>
+          <div class="run-status"><span id="runStatusTxt">Initializing...</span><span class="pct" id="runPct">0%</span></div>
+        </div>
+      </div>
+
+    </div><!-- /config -->
+
+    <!-- Results -->
+    <div class="results">
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab on" onclick="switchTab('chart',this)">Equity Curve</div>
+        <div class="tab" onclick="switchTab('trades',this)">Trade Log <span style="font-size:9px;color:rgba(36,148,106,.6);margin-left:4px">847</span></div>
+        <div class="tab" onclick="switchTab('opt',this)">Optimization</div>
+        <div class="tab" onclick="switchTab('stats',this)">Full Stats</div>
+        <div class="tabs-spacer"></div>
+        <div class="tab-meta">
+          <span>Last run: <span style="color:var(--t3)">2m ago</span></span>
+          <span>847 trades</span>
+          <span style="color:rgba(36,148,106,.7)">Completed</span>
+        </div>
+      </div>
+
+      <!-- ── CHART PANE ── -->
+      <div class="pane on" id="pane-chart">
+        <div class="chart-pane">
+
+          <div class="metrics-strip">
+            <div class="mc"><div class="mc-lbl">Net Return</div><div class="mc-val pos" id="mc-ret">+34.7%</div><div class="mc-sub">vs +22.1% bench</div></div>
+            <div class="mc"><div class="mc-lbl">Sharpe</div><div class="mc-val" id="mc-sh">1.84</div><div class="mc-sub">Sortino 2.41</div></div>
+            <div class="mc"><div class="mc-lbl">Max DD</div><div class="mc-val neg" id="mc-dd">-8.3%</div><div class="mc-sub">Duration 18d</div></div>
+            <div class="mc"><div class="mc-lbl">Win Rate</div><div class="mc-val" id="mc-wr">63.2%</div><div class="mc-sub">535W / 312L</div></div>
+            <div class="mc"><div class="mc-lbl">Avg Trade</div><div class="mc-val pos" id="mc-avg">+0.41%</div><div class="mc-sub">Avg hold 3.2d</div></div>
+            <div class="mc"><div class="mc-lbl">Profit Factor</div><div class="mc-val" id="mc-pf">2.31</div><div class="mc-sub">Gross / loss</div></div>
+          </div>
+
+          <div class="chart-area">
+
+            <!-- Main equity chart -->
+            <div class="chart-box">
+              <div class="chart-head">
+                <span class="ch-title">Equity Curve</span>
+                <div class="ch-legend">
+                  <span class="ch-leg-item"><span class="ch-leg-dot" style="background:rgba(36,148,106,0.85)"></span>Strategy</span>
+                  <span class="ch-leg-item"><span class="ch-leg-dot" style="background:rgba(26,95,168,0.7)"></span>Benchmark</span>
+                  <span class="ch-leg-item"><span class="ch-leg-dot" style="background:rgba(192,57,43,0.5);height:2px"></span>Drawdown</span>
+                </div>
+                <div class="ch-spacer"></div>
+                <div class="ch-range">
+                  <span class="ch-r" onclick="setRange(this,'1Y')">1Y</span>
+                  <span class="ch-r" onclick="setRange(this,'2Y')">2Y</span>
+                  <span class="ch-r on" onclick="setRange(this,'All')">All</span>
+                </div>
+              </div>
+              <div class="chart-svg-wrap" id="mainChartWrap">
+                <svg id="mainChart" width="100%" height="100%" viewBox="0 0 800 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="gs" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(36,148,106,0.28)"/>
+                      <stop offset="85%" stop-color="rgba(36,148,106,0.02)"/>
+                    </linearGradient>
+                    <linearGradient id="gb" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(26,95,168,0.18)"/>
+                      <stop offset="90%" stop-color="rgba(26,95,168,0.01)"/>
+                    </linearGradient>
+                    <linearGradient id="gdd" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(192,57,43,0.18)"/>
+                      <stop offset="100%" stop-color="rgba(192,57,43,0.03)"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- grid -->
+                  <line x1="0" y1="0" x2="800" y2="0" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                  <line x1="0" y1="50" x2="800" y2="50" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                  <line x1="0" y1="100" x2="800" y2="100" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                  <line x1="0" y1="150" x2="800" y2="150" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                  <line x1="0" y1="185" x2="800" y2="185" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+                  <!-- Y labels -->
+                  <text x="2" y="8" font-family="DM Mono" font-size="8" fill="rgba(255,255,255,0.2)">+40%</text>
+                  <text x="2" y="58" font-family="DM Mono" font-size="8" fill="rgba(255,255,255,0.2)">+30%</text>
+                  <text x="2" y="108" font-family="DM Mono" font-size="8" fill="rgba(255,255,255,0.2)">+20%</text>
+                  <text x="2" y="158" font-family="DM Mono" font-size="8" fill="rgba(255,255,255,0.2)">+10%</text>
+                  <text x="2" y="192" font-family="DM Mono" font-size="8" fill="rgba(255,255,255,0.15)">0%</text>
+                  <!-- Drawdown zones -->
+                  <path d="M145,108 L145,125 Q160,140 195,135 L195,108 Z" fill="url(#gdd)" opacity="0.7"/>
+                  <path d="M480,70 L480,88 Q510,100 545,93 L545,70 Z" fill="url(#gdd)" opacity="0.5"/>
+                  <!-- Benchmark area -->
+                  <path d="M0,185 L0,165 C80,155 160,148 240,145 C320,142 400,135 480,125 C560,115 640,110 720,103 L800,97 L800,185 Z" fill="url(#gb)"/>
+                  <path d="M0,165 C80,155 160,148 240,145 C320,142 400,135 480,125 C560,115 640,110 720,103 L800,97" fill="none" stroke="rgba(26,95,168,0.55)" stroke-width="1.3" stroke-dasharray="5,3"/>
+                  <!-- Strategy area -->
+                  <path d="M0,185 L0,160 C50,145 90,138 130,142 C165,146 175,130 210,115 C250,98 275,108 310,88 C345,68 365,75 400,55 C435,35 460,45 490,30 C520,15 560,20 600,12 C640,4 700,8 760,5 L800,3 L800,185 Z" fill="url(#gs)"/>
+                  <path d="M0,160 C50,145 90,138 130,142 C165,146 175,130 210,115 C250,98 275,108 310,88 C345,68 365,75 400,55 C435,35 460,45 490,30 C520,15 560,20 600,12 C640,4 700,8 760,5 L800,3" fill="none" stroke="rgba(36,148,106,0.88)" stroke-width="1.8"/>
+                  <!-- Trade markers -->
+                  <circle cx="130" cy="142" r="2.5" fill="rgba(192,57,43,0.7)" opacity="0.8"/>
+                  <circle cx="210" cy="115" r="2.5" fill="rgba(36,148,106,0.8)" opacity="0.8"/>
+                  <circle cx="310" cy="88" r="2.5" fill="rgba(36,148,106,0.8)" opacity="0.8"/>
+                  <circle cx="400" cy="55" r="2.5" fill="rgba(36,148,106,0.8)" opacity="0.8"/>
+                  <circle cx="490" cy="30" r="2.5" fill="rgba(192,57,43,0.7)" opacity="0.8"/>
+                  <circle cx="600" cy="12" r="2.5" fill="rgba(36,148,106,0.8)" opacity="0.8"/>
+                  <!-- Hover crosshair (static visual) -->
+                  <line x1="760" y1="0" x2="760" y2="185" stroke="rgba(36,148,106,0.2)" stroke-width="0.5" stroke-dasharray="3,3"/>
+                  <circle cx="760" cy="5" r="4" fill="rgba(36,148,106,0.9)" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
+                  <!-- Tooltip -->
+                  <rect x="630" y="2" width="130" height="46" rx="5" fill="rgba(7,16,30,0.96)" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
+                  <text x="638" y="14" font-family="DM Mono" font-size="7" fill="rgba(255,255,255,0.3)" letter-spacing="1">APR 14, 2026</text>
+                  <text x="638" y="27" font-family="DM Mono" font-size="10" fill="rgba(36,148,106,0.9)">+34.2%</text>
+                  <text x="700" y="27" font-family="DM Mono" font-size="10" fill="rgba(26,95,168,0.7)">+21.8%</text>
+                  <text x="638" y="38" font-family="DM Mono" font-size="7.5" fill="rgba(255,255,255,0.28)">$134,200</text>
+                  <text x="700" y="38" font-family="DM Mono" font-size="7" fill="rgba(255,255,255,0.2)">equity</text>
+                  <!-- X axis labels -->
+                  <text x="0" y="199" font-family="DM Mono" font-size="7.5" fill="rgba(255,255,255,0.2)">2020</text>
+                  <text x="150" y="199" font-family="DM Mono" font-size="7.5" fill="rgba(255,255,255,0.2)">2021</text>
+                  <text x="305" y="199" font-family="DM Mono" font-size="7.5" fill="rgba(255,255,255,0.2)">2022</text>
+                  <text x="460" y="199" font-family="DM Mono" font-size="7.5" fill="rgba(255,255,255,0.2)">2023</text>
+                  <text x="615" y="199" font-family="DM Mono" font-size="7.5" fill="rgba(255,255,255,0.2)">2024</text>
+                  <text x="750" y="199" font-family="DM Mono" font-size="7.5" fill="rgba(255,255,255,0.2)">Now</text>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Drawdown sub-chart -->
+            <div class="chart-box">
+              <div class="chart-head" style="padding:7px 14px">
+                <span class="ch-title" style="font-size:10px">Drawdown</span>
+                <span style="font-family:var(--mono);font-size:9px;color:rgba(192,57,43,0.65);margin-left:8px">Peak: -8.3% (Feb 2022)</span>
+              </div>
+              <div class="chart-svg-wrap" style="padding:5px 14px 4px">
+                <svg width="100%" height="100%" viewBox="0 0 800 65" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="gdd2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="rgba(192,57,43,0.45)"/>
+                      <stop offset="100%" stop-color="rgba(192,57,43,0.03)"/>
+                    </linearGradient>
+                  </defs>
+                  <line x1="0" y1="0" x2="800" y2="0" stroke="rgba(192,57,43,0.15)" stroke-width="0.5"/>
+                  <path d="M0,0 L30,0 L60,3 L100,5 L130,15 L165,28 C180,38 195,45 210,40 C225,35 240,20 260,12 L300,5 L340,8 L360,2 L390,6 L420,18 C440,28 460,35 485,30 C510,22 530,8 560,3 L600,0 L640,1 L680,0 L720,2 L760,0 L800,0 L800,65 L0,65 Z" fill="url(#gdd2)"/>
+                  <path d="M0,0 L30,0 L60,3 L100,5 L130,15 L165,28 C180,38 195,45 210,40 C225,35 240,20 260,12 L300,5 L340,8 L360,2 L390,6 L420,18 C440,28 460,35 485,30 C510,22 530,8 560,3 L600,0 L640,1 L680,0 L720,2 L760,0" fill="none" stroke="rgba(192,57,43,0.7)" stroke-width="1.2"/>
+                  <text x="2" y="60" font-family="DM Mono" font-size="7" fill="rgba(255,255,255,0.15)">0%</text>
+                  <text x="2" y="8" font-family="DM Mono" font-size="7" fill="rgba(192,57,43,0.5)">-8%</text>
+                </svg>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TRADE LOG PANE ── -->
+      <div class="pane" id="pane-trades">
+        <div class="tradelog-pane">
+          <div class="tl-filters">
+            <input class="tl-search" placeholder="Search symbol, date, tag..." oninput="filterTrades(this.value)"/>
+            <button class="filter-btn on" onclick="filterDir('all',this)">All</button>
+            <button class="filter-btn" onclick="filterDir('long',this)">Long</button>
+            <button class="filter-btn" onclick="filterDir('short',this)">Short</button>
+            <button class="filter-btn" onclick="filterDir('win',this)">Winners</button>
+            <button class="filter-btn" onclick="filterDir('loss',this)">Losers</button>
+          </div>
+          <div class="tl-table-wrap">
+            <table class="tl" id="tradeTable">
+              <thead>
+                <tr>
+                  <th>#</th><th>Symbol</th><th>Dir</th><th>Entry Date</th><th>Exit Date</th>
+                  <th>Entry $</th><th>Exit $</th><th>Qty</th><th>P&L</th><th>Return</th><th>Hold</th>
+                  <th>Signal</th>
+                </tr>
+              </thead>
+              <tbody id="tradeBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── OPTIMIZATION PANE ── -->
+      <div class="pane" id="pane-opt">
+        <div class="opt-pane">
+          <div class="opt-left">
+            <div>
+              <div class="cfg-hd" style="font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px">Parameter Ranges</div>
+              <div class="param-grid" id="paramGrid">
+                <div class="param-card sel" onclick="this.classList.toggle('sel')">
+                  <div class="pc-check on"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="rgba(255,255,255,0.9)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  <div class="pc-name">RSI Period</div><div class="pc-range">5 – 30, step 1</div>
+                </div>
+                <div class="param-card sel" onclick="this.classList.toggle('sel')">
+                  <div class="pc-check on"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="rgba(255,255,255,0.9)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  <div class="pc-name">MACD Fast</div><div class="pc-range">8 – 20, step 2</div>
+                </div>
+                <div class="param-card" onclick="this.classList.toggle('sel')">
+                  <div class="pc-check"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="rgba(255,255,255,0.3)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  <div class="pc-name">MACD Slow</div><div class="pc-range">20 – 40, step 2</div>
+                </div>
+                <div class="param-card sel" onclick="this.classList.toggle('sel')">
+                  <div class="pc-check on"><svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="rgba(255,255,255,0.9)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  <div class="pc-name">Stop Loss %</div><div class="pc-range">1 – 10, step 0.5</div>
+                </div>
+                <div class="param-card" onclick="this.classList.toggle('sel')">
+                  <div class="pc-check"></div>
+                  <div class="pc-name">Take Profit %</div><div class="pc-range">2 – 20, step 1</div>
+                </div>
+                <div class="param-card" onclick="this.classList.toggle('sel')">
+                  <div class="pc-check"></div>
+                  <div class="pc-name">EMA Period</div><div class="pc-range">20 – 200, step 10</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="cfg-hd" style="font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px">Optimize For</div>
+              <div class="row2">
+                <select><option>Sharpe Ratio</option><option>Total Return</option><option>Profit Factor</option><option>Calmar Ratio</option></select>
+                <select><option>Walk-Forward</option><option>Grid Search</option><option>Genetic Algo</option></select>
+              </div>
+            </div>
+            <div>
+              <div class="cfg-hd" style="font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:8px">Combinations</div>
+              <div style="display:flex;gap:16px">
+                <div class="mc" style="flex:1"><div class="mc-lbl">Total Combos</div><div class="mc-val" style="font-size:18px">2,496</div></div>
+                <div class="mc" style="flex:1"><div class="mc-lbl">Est. Time</div><div class="mc-val" style="font-size:18px">~4m</div></div>
+                <div class="mc" style="flex:1"><div class="mc-lbl">Best Sharpe</div><div class="mc-val pos" style="font-size:18px">2.14</div></div>
+              </div>
+            </div>
+            <button class="tb-btn run" style="width:100%;padding:11px;font-size:13px" onclick="alert('Optimization run queued!')">▶ Run Optimization</button>
+          </div>
+
+          <div class="opt-right">
+            <div class="cfg-hd" style="font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:10px">Sharpe Ratio Heatmap — RSI Period vs Stop Loss %</div>
+            <!-- Axis labels -->
+            <div style="display:flex;gap:6px;align-items:flex-start">
+              <div style="display:flex;flex-direction:column;justify-content:space-between;padding-top:22px;padding-bottom:4px;min-width:28px">
+                <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">SL 1%</span>
+                <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">3%</span>
+                <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">5%</span>
+                <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">8%</span>
+                <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">10%</span>
+              </div>
+              <div>
+                <div style="display:grid;grid-template-columns:repeat(10,30px);gap:3px;margin-bottom:3px">
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">5</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">8</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">10</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">12</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">14</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">16</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">18</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">20</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">24</span>
+                  <span style="font-family:var(--mono);font-size:7.5px;color:var(--t4);text-align:center">28</span>
+                </div>
+                <div id="heatmapGrid" style="display:grid;grid-template-columns:repeat(10,30px);gap:3px;"></div>
+              </div>
+            </div>
+            <!-- legend -->
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+              <span style="font-family:var(--mono);font-size:8.5px;color:var(--t4)">Sharpe:</span>
+              <div style="display:flex;gap:2px">
+                <div style="width:18px;height:10px;border-radius:2px;background:rgba(192,57,43,0.7)"></div>
+                <div style="width:18px;height:10px;border-radius:2px;background:rgba(192,57,43,0.4)"></div>
+                <div style="width:18px;height:10px;border-radius:2px;background:rgba(255,255,255,0.1)"></div>
+                <div style="width:18px;height:10px;border-radius:2px;background:rgba(36,148,106,0.45)"></div>
+                <div style="width:18px;height:10px;border-radius:2px;background:rgba(36,148,106,0.75)"></div>
+                <div style="width:18px;height:10px;border-radius:2px;background:rgba(36,148,106,1)"></div>
+              </div>
+              <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">low → high</span>
+            </div>
+            <!-- Top results table -->
+            <div style="margin-top:14px">
+              <div class="cfg-hd" style="font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:10px">Top Combinations</div>
+              <table class="tl" style="width:100%">
+                <thead><tr><th>RSI</th><th>SL %</th><th>Sharpe</th><th>Return</th><th>Win%</th><th>Action</th></tr></thead>
+                <tbody>
+                  <tr><td>14</td><td>3.0%</td><td class="pos">2.14</td><td class="pos">+38.2%</td><td>65.1%</td><td><span style="font-size:10px;color:rgba(36,148,106,.7);cursor:pointer" onclick="applyParams(14,3.0)">Apply</span></td></tr>
+                  <tr><td>12</td><td>3.5%</td><td class="pos">2.08</td><td class="pos">+36.9%</td><td>64.2%</td><td><span style="font-size:10px;color:rgba(36,148,106,.7);cursor:pointer" onclick="applyParams(12,3.5)">Apply</span></td></tr>
+                  <tr><td>16</td><td>2.5%</td><td class="pos">1.97</td><td class="pos">+35.1%</td><td>63.8%</td><td><span style="font-size:10px;color:rgba(36,148,106,.7);cursor:pointer" onclick="applyParams(16,2.5)">Apply</span></td></tr>
+                  <tr><td>14</td><td>4.0%</td><td>1.91</td><td class="pos">+34.7%</td><td>63.2%</td><td><span style="font-size:10px;color:rgba(36,148,106,.7);cursor:pointer" onclick="applyParams(14,4.0)">Apply ★</span></td></tr>
+                  <tr><td>10</td><td>3.0%</td><td>1.84</td><td class="pos">+31.4%</td><td>61.7%</td><td><span style="font-size:10px;color:rgba(36,148,106,.7);cursor:pointer">Apply</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FULL STATS PANE ── -->
+      <div class="pane" id="pane-stats">
+        <div style="padding:18px 22px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;height:100%">
+          <div>
+            <div class="cfg-hd" style="font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px">Returns</div>
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Total Net Return</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">+34.72%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Annualized Return</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">+5.72%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Benchmark Return</td><td style="font-family:var(--mono);font-size:11.5px;color:var(--t2);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">+22.10%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Alpha (ann.)</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">+12.62%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Best Month</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">+6.70%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0">Worst Month</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(192,57,43,.8);text-align:right;padding:6px 0">-2.90%</td></tr>
+            </table>
+          </div>
+          <div>
+            <div class="cfg-hd" style="font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px">Risk</div>
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Sharpe Ratio</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">1.84</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Sortino Ratio</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">2.41</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Calmar Ratio</td><td style="font-family:var(--mono);font-size:11.5px;color:var(--t2);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">1.22</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Max Drawdown</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(192,57,43,.8);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">-8.30%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Max DD Duration</td><td style="font-family:var(--mono);font-size:11.5px;color:var(--t2);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">18 days</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">VaR 95% (1d)</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(192,57,43,.8);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">-1.42%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0">Beta</td><td style="font-family:var(--mono);font-size:11.5px;color:var(--t2);text-align:right;padding:6px 0">0.71</td></tr>
+            </table>
+          </div>
+          <div>
+            <div class="cfg-hd" style="font-family:var(--mono);font-size:8px;color:var(--t4);letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px">Trades</div>
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Total Trades</td><td style="font-family:var(--mono);font-size:11.5px;color:var(--t2);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">847</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Win Rate</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">63.2%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Profit Factor</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">2.31</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Avg Win</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">+1.24%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Avg Loss</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(192,57,43,.8);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">-0.54%</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">Avg Hold Time</td><td style="font-family:var(--mono);font-size:11.5px;color:var(--t2);text-align:right;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">3.2 days</td></tr>
+              <tr><td style="font-size:11px;color:var(--t3);padding:6px 0">Largest Win</td><td style="font-family:var(--mono);font-size:11.5px;color:rgba(36,148,106,.85);text-align:right;padding:6px 0">+8.91%</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statusbar -->
+      <div class="statusbar">
+        <span class="sb-item">Strategy <span class="val">RSI-MACD v4.2</span></span>
+        <span class="sb-item">Trades <span class="val">847</span></span>
+        <span class="sb-item">Return <span class="pos">+34.7%</span></span>
+        <span class="sb-item">Drawdown <span class="neg">-8.3%</span></span>
+        <span class="sb-item">Sharpe <span class="val">1.84</span></span>
+        <div style="flex:1"></div>
+        <span class="sb-item">Capital <span class="val">$100,000</span></span>
+        <span class="sb-item">Timeframe <span class="val">1D</span></span>
+        <span class="sb-item" style="color:rgba(36,148,106,.6)">● Completed in 1.4s</span>
+      </div>
+
+    </div><!-- /results -->
+  </div><!-- /workspace -->
+
+  <!-- Ticker -->
+  <div class="ticker" style="display:flex">
+    <div class="tk-lbl">Live</div>
+    <div class="tk-track">
+      <div class="tk-inner">
+        <span class="ti"><span class="s">SPY</span><span class="up">▲ 0.34%</span>524.18</span>
+        <span class="ti"><span class="s">QQQ</span><span class="dn">▼ 0.12%</span>441.05</span>
+        <span class="ti"><span class="s">AAPL</span><span class="up">▲ 1.02%</span>189.74</span>
+        <span class="ti"><span class="s">BTC/USD</span><span class="up">▲ 2.41%</span>68,420</span>
+        <span class="ti"><span class="s">GLD</span><span class="dn">▼ 0.08%</span>231.10</span>
+        <span class="ti"><span class="s">TSLA</span><span class="up">▲ 0.77%</span>177.29</span>
+        <span class="ti"><span class="s">EUR/USD</span><span class="dn">▼ 0.19%</span>1.0812</span>
+        <span class="ti"><span class="s">VIX</span><span class="up">▲ 3.15%</span>14.82</span>
+        <span class="ti"><span class="s">NVDA</span><span class="up">▲ 1.88%</span>875.40</span>
+        <span class="ti"><span class="s">10Y</span><span class="dn">▼ 0.04%</span>4.31%</span>
+        <span class="ti"><span class="s">SPY</span><span class="up">▲ 0.34%</span>524.18</span>
+        <span class="ti"><span class="s">QQQ</span><span class="dn">▼ 0.12%</span>441.05</span>
+        <span class="ti"><span class="s">AAPL</span><span class="up">▲ 1.02%</span>189.74</span>
+        <span class="ti"><span class="s">BTC/USD</span><span class="up">▲ 2.41%</span>68,420</span>
+        <span class="ti"><span class="s">GLD</span><span class="dn">▼ 0.08%</span>231.10</span>
+        <span class="ti"><span class="s">TSLA</span><span class="up">▲ 0.77%</span>177.29</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ── Tab switching ──
+function switchTab(id, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('pane-'+id).classList.add('on');
+}
+
+// ── Run Backtest simulation ──
+let running = false, timer = null;
+function toggleRun() {
+  const btn = document.getElementById('runBtn');
+  const prog = document.getElementById('progressSection');
+  if (!running) {
+    running = true;
+    btn.textContent = '■ Stop';
+    btn.classList.add('running');
+    prog.style.display = 'block';
+    let pct = 0;
+    const fill = document.getElementById('runBarFill');
+    const txt = document.getElementById('runStatusTxt');
+    const pctEl = document.getElementById('runPct');
+    const stages = ['Loading historical data...','Initializing indicators...','Running signals...','Executing trades...','Computing metrics...','Finalizing results...'];
+    let stageIdx = 0;
+    timer = setInterval(()=>{
+      pct += Math.random()*3.5+0.5;
+      if(pct>=100){pct=100; clearInterval(timer); running=false; btn.textContent='▶ Re-run'; btn.classList.remove('running'); txt.textContent='Completed — 847 trades'; pctEl.textContent='100%'; fill.style.width='100%'; return;}
+      fill.style.width = pct.toFixed(1)+'%';
+      pctEl.textContent = Math.floor(pct)+'%';
+      stageIdx = Math.floor((pct/100)*stages.length);
+      txt.textContent = stages[Math.min(stageIdx, stages.length-1)];
+    }, 80);
+  } else {
+    clearInterval(timer); running=false;
+    btn.textContent='▶ Run Backtest'; btn.classList.remove('running');
+    document.getElementById('runStatusTxt').textContent='Stopped by user';
+  }
+}
+
+// ── Trade Log data ──
+const symbols = ['AAPL','SPY','NVDA','MSFT','QQQ','TSLA','AMZN','META','GOOGL','JPM'];
+const signals = ['RSI Cross','MACD Signal','EMA Touch','Breakout','Mean Rev','Momentum'];
+const trades = [];
+let equity = 100000;
+const startDate = new Date('2020-01-15');
+for(let i=0;i<120;i++){
+  const d = new Date(startDate); d.setDate(d.getDate()+i*18+Math.floor(Math.random()*10));
+  const exit = new Date(d); exit.setDate(exit.getDate()+Math.floor(Math.random()*8)+1);
+  const sym = symbols[Math.floor(Math.random()*symbols.length)];
+  const dir = Math.random()>0.3?'long':'short';
+  const isWin = Math.random()<0.632;
+  const ret = isWin?(Math.random()*2.5+0.1):(-(Math.random()*1.2+0.1));
+  const entry = 100+Math.random()*400;
+  const exitP = entry*(1+ret/100);
+  const qty = Math.floor(Math.random()*50)+10;
+  const pnl = (exitP-entry)*qty*(dir==='long'?1:-1);
+  equity+=pnl;
+  const hold = Math.floor((exit-d)/86400000);
+  trades.push({i:i+1,sym,dir,entry:entry.toFixed(2),exit:exitP.toFixed(2),qty,pnl,ret,hold,signal:signals[Math.floor(Math.random()*signals.length)],entryDate:d.toISOString().slice(0,10),exitDate:exit.toISOString().slice(0,10),isWin});
+}
+trades.sort((a,b)=>b.i-a.i);
+
+function renderTrades(list){
+  const tb = document.getElementById('tradeBody');
+  tb.innerHTML = list.slice(0,60).map(t=>`
+    <tr>
+      <td style="color:var(--t4)">${t.i}</td>
+      <td class="sym">${t.sym}</td>
+      <td><span class="dir-pill ${t.dir}">${t.dir.toUpperCase()}</span></td>
+      <td>${t.entryDate}</td>
+      <td>${t.exitDate}</td>
+      <td>$${t.entry}</td>
+      <td>$${t.exit}</td>
+      <td>${t.qty}</td>
+      <td class="${t.pnl>=0?'pos':'neg'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(0)}</td>
+      <td class="${t.ret>=0?'pos':'neg'}">
+        <div class="bar-inline">
+          ${t.ret>=0?'+':''}${t.ret.toFixed(2)}%
+          <div class="bar-mini" style="width:${Math.min(Math.abs(t.ret)/3*40,60)}px;background:${t.ret>=0?'rgba(36,148,106,0.5)':'rgba(192,57,43,0.5)'}"></div>
+        </div>
+      </td>
+      <td style="color:var(--t3)">${t.hold}d</td>
+      <td style="color:var(--t4);font-size:10px">${t.signal}</td>
+    </tr>`).join('');
+}
+renderTrades(trades);
+
+let activeFilter='all', searchQ='';
+function filterDir(f,el){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  applyFilters();
+}
+function filterTrades(q){searchQ=q.toLowerCase();applyFilters();}
+function applyFilters(){
+  let list=trades;
+  if(activeFilter==='long') list=list.filter(t=>t.dir==='long');
+  else if(activeFilter==='short') list=list.filter(t=>t.dir==='short');
+  else if(activeFilter==='win') list=list.filter(t=>t.isWin);
+  else if(activeFilter==='loss') list=list.filter(t=>!t.isWin);
+  if(searchQ) list=list.filter(t=>t.sym.toLowerCase().includes(searchQ)||t.signal.toLowerCase().includes(searchQ)||t.entryDate.includes(searchQ));
+  renderTrades(list);
+}
+
+// ── Range selector ──
+function setRange(el,r){
+  document.querySelectorAll('.ch-r').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// ── Heatmap generation ──
+const hmData = [];
+for(let row=0;row<5;row++){
+  for(let col=0;col<10;col++){
+    const v = 0.4 + Math.sin(row*0.7+col*0.4)*0.8 + Math.random()*0.4;
+    hmData.push(Math.max(0.2,Math.min(2.4,v)));
+  }
+}
+const hg = document.getElementById('heatmapGrid');
+const bestVal = Math.max(...hmData);
+hmData.forEach((v,i)=>{
+  const norm = (v-0.2)/2.2;
+  let bg;
+  if(norm<0.3) bg=`rgba(192,57,43,${0.3+norm*1.2})`;
+  else if(norm<0.5) bg=`rgba(255,255,255,${norm*0.2})`;
+  else bg=`rgba(36,148,106,${0.25+(norm-0.5)*1.5})`;
+  const isBest = v===bestVal;
+  const cell = document.createElement('div');
+  cell.className='hm-cell';
+  cell.style.cssText=`background:${bg};height:28px;${isBest?'outline:1.5px solid rgba(36,148,106,0.8);':''} `;
+  cell.textContent=v.toFixed(2);
+  cell.style.color=norm>0.4?'rgba(255,255,255,0.75)':'rgba(255,255,255,0.45)';
+  cell.title=`Sharpe: ${v.toFixed(3)}`;
+  hg.appendChild(cell);
+});
+
+// ── Apply optimization params ──
+function applyParams(rsi, sl) {
+  document.getElementById('stratSelect').value='RSI-MACD Momentum';
+  document.getElementById('slStop').value = sl*10;
+  document.getElementById('slVal').textContent = '-'+sl.toFixed(1)+'%';
+  switchTab('chart', document.querySelector('.tab'));
+  document.querySelector('.tab').classList.add('on');
+  document.querySelectorAll('.tab')[0].classList.add('on');
+  setTimeout(()=>toggleRun(),300);
+}
+
+// ── Add indicator ──
+const indOptions = ['SMA(200)','VWAP','Stoch(14,3)','BB(20,2)','OBV','CCI(20)'];
+let addedInds = [];
+function addIndicator(){
+  const unused = indOptions.filter(o=>!addedInds.includes(o));
+  if(!unused.length) return;
+  const ind = unused[0]; addedInds.push(ind);
+  const tags = document.getElementById('indTags');
+  const tag = document.createElement('span');
+  tag.className='ind-tag blue'; tag.innerHTML=ind+' <span class="x">×</span>';
+  tag.onclick=()=>{tag.remove();addedInds=addedInds.filter(i=>i!==ind);};
+  tags.insertBefore(tag, tags.lastElementChild);
+}
+
+// ── Reset config ──
+function resetConfig(){
+  document.getElementById('posSize').value=10;
+  document.getElementById('posSizeVal').textContent='10%';
+  document.getElementById('commInput').value=5;
+  document.getElementById('commVal').textContent='$5.0';
+  document.getElementById('slipInput').value=3;
+  document.getElementById('slipVal').textContent='3bps';
+  document.getElementById('slStop').value=3;
+  document.getElementById('slVal').textContent='-3.0%';
+  document.getElementById('tpStop').value=9;
+  document.getElementById('tpVal').textContent='+9.0%';
+  document.getElementById('capitalInput').value=100000;
+}
+</script>
+</body>
+</html>
