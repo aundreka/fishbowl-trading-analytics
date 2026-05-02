@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: fishbowl-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fishbowl
+      POSTGRES_USER: fishbowl
+      POSTGRES_PASSWORD: fishbowl
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+
+  backend:
+    build: ./backend
+    container_name: fishbowl-backend
+    restart: unless-stopped
+    environment:
+      APP_STORAGE_PATH: /app/backend_data/store.json
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/backend_data:/app/backend_data
+    depends_on:
+      - postgres
+
+  frontend:
+    build: ./frontend
+    container_name: fishbowl-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

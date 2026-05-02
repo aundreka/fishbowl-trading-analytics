@@ -1,0 +1,77 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+
+import { apiFetch } from "../../lib/api";
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("admin@fishbowl.local");
+  const [password, setPassword] = useState("fishbowl123");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    try {
+      const result = await apiFetch<{ token: string; user: { full_name: string; role: string } }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("fishbowl-token", result.token);
+      }
+      setMessage(`Welcome back, ${result.user.full_name}. You are logged in as ${result.user.role}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to log in.");
+    }
+  }
+
+  return (
+    <section className="loginScene">
+      <div className="loginCard">
+        <div className="loginBrand">
+          <div className="loginLogo">FB</div>
+          <strong>Fishbowl Trading Analytics</strong>
+          <span>Strategy / Backtest / Evaluate</span>
+        </div>
+
+        <form className="loginForm" onSubmit={handleSubmit}>
+          <label>
+            Email address
+            <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@institution.com" />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="************"
+            />
+          </label>
+          <div className="loginRow">
+            <span>Remember me</span>
+            <a href="#">Forgot password?</a>
+          </div>
+          <button type="submit" className="loginPrimary">
+            Sign in to dashboard
+          </button>
+          <div className="loginDivider">OR</div>
+          <button type="button" className="ghostButton">
+            Continue with SSO
+          </button>
+          <button type="button" className="ghostButton">
+            Continue with Google Workspace
+          </button>
+        </form>
+
+        <p className="loginFootnote">
+          Demo access: <span>admin@fishbowl.local</span> / <span>fishbowl123</span>
+        </p>
+        {message ? <p className="success">{message}</p> : null}
+        {error ? <p className="errorText">{error}</p> : null}
+      </div>
+    </section>
+  );
+}

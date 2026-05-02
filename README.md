@@ -1,106 +1,57 @@
 # Fishbowl Trading Analytics
 
-**Fishbowl Trading Analytics** is a trading strategy backtesting and performance analytics system that allows users to simulate, evaluate, and compare trading strategies using historical market data in a controlled, risk-free environment.
+Fishbowl Trading Analytics is a backtesting platform for students, aspiring traders, and finance enthusiasts who want to test strategies in a controlled environment without risking real money.
 
----
+## Stack
 
-## Overview
+- Backend: FastAPI
+- Frontend: Next.js App Router with TypeScript
+- Target database: PostgreSQL
+- Local MVP data store: JSON file for immediate demo use
+- Deployment: Docker Compose
 
-Fishbowl provides a structured platform where users can:
+## Modules
 
-* Test trading strategies without real financial risk
-* Analyze historical market behavior
-* Evaluate performance using key financial metrics
-* Make data-driven decisions before entering real markets
+- Login / authentication
+- User management
+- Asset management
+- Historical data upload and validation
+- Strategy management
+- Backtesting dashboard
+- Trade logs viewer
+- Performance analytics
+- Fishbowl AI Strategy Assistant
 
-The system acts as a **“fishbowl”**, a controlled environment where trading behavior can be observed, tested, and refined.
+## Demo Accounts
 
----
+- `admin@fishbowl.local` / `fishbowl123`
+- `user@fishbowl.local` / `fishbowl123`
 
-## Objectives
+## Run Locally
 
-* Provide a platform for **strategy simulation and evaluation**
-* Enable **data-driven trading decisions**
-* Support learning and experimentation in financial markets
-* Demonstrate a complete **Integrated Database System** with real-world application
+### Backend
 
----
+```powershell
+cd backend
+.venv\Scripts\python -m uvicorn app.main:app --reload
+```
 
-## Target Users
+### Frontend
 
-* Students and researchers in finance or computing
-* Aspiring traders and finance enthusiasts
-* Educators demonstrating trading concepts and analytics
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
----
+### Docker Compose
 
-## Core Features
+```powershell
+docker compose up --build
+```
 
-### Strategy Backtesting
+## Notes
 
-* Run simulations using historical market data
-* Support predefined strategies (e.g., Moving Average, RSI)
-
-### Parameter Configuration
-
-* Customize strategy inputs (e.g., periods, thresholds, capital, fees)
-
-### Trade Simulation
-
-* Simulate buy/sell actions based on strategy rules
-* Track portfolio changes over time
-
-### Performance Analytics
-
-* Compute metrics such as:
-
-  * Total Return
-  * Net Profit
-  * Win Rate
-  * Max Drawdown
-  * Sharpe Ratio
-
-### Data Management
-
-* Upload and manage historical price datasets
-* Store assets and financial instruments
-
-### Results Visualization
-
-* Display:
-
-  * Equity curves
-  * Trade logs
-  * Performance summaries
-
----
-
-## How It Works
-
-1. User selects or uploads historical market data
-2. User chooses a trading strategy
-3. User configures parameters
-4. System runs simulation on past data
-5. Trades are executed virtually
-6. Results and performance metrics are generated
-
----
-
-## Academic Context
-
-This project is developed as an **Integrated Database System** for our CS Elective 3 class, demonstrating:
-
-* relational database design
-* system architecture
-* real-world financial application
-
----
-
-## Developers
-
-**Clarinze Aundreka S. Perez**
-System Designer & Developer
-
-**Leo Franklin C. Borromeo**
-Developer
-
+- The repository includes a PostgreSQL schema and seed file in [database/schema.sql](/C:/apps/acads/fishbowl-trading-analytics/database/schema.sql) and [database/seed.sql](/C:/apps/acads/fishbowl-trading-analytics/database/seed.sql).
+- The FastAPI MVP currently uses `backend/backend_data/store.json` so the app works immediately in this workspace without waiting for database drivers or a live database connection.
+- The AI assistant endpoint supports a local educational fallback response and an environment hook for `QWEN_API_KEY`.
