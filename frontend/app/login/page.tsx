@@ -1,10 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { apiFetch } from "../../lib/api";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("admin@fishbowl.local");
   const [password, setPassword] = useState("fishbowl123");
   const [message, setMessage] = useState("");
@@ -21,7 +23,12 @@ export default function LoginPage() {
       if (typeof window !== "undefined") {
         localStorage.setItem("fishbowl-token", result.token);
       }
-      setMessage(`Welcome back, ${result.user.full_name}. You are logged in as ${result.user.role}.`);
+      setMessage(`Welcome back, ${result.user.full_name}. Redirecting...`);
+      
+      // Small delay to show success message before redirect
+      setTimeout(() => {
+        router.push("/");
+      }, 800);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to log in.");
     }
@@ -66,9 +73,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="loginFootnote">
-          Demo access: <span>admin@fishbowl.local</span> / <span>fishbowl123</span>
-        </p>
         {message ? <p className="success">{message}</p> : null}
         {error ? <p className="errorText">{error}</p> : null}
       </div>

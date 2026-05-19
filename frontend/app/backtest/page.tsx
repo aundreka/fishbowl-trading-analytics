@@ -3,53 +3,268 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { apiFetch } from "../../lib/api";
+import { Asset, BacktestMetrics, BacktestTrade, Strategy, StrategyParameter, getErrorMessage } from "../../lib/types";
 import { currency, percent } from "../../lib/utils";
 
-type Asset = { asset_id: number; symbol: string };
-type Strategy = {
+type BacktestForm = {
+  user_id: number;
+  asset_id: number;
   strategy_id: number;
-  strategy_name: string;
-  parameters: Array<{ parameter_name: string; default_value: string }>;
+  run_name: string;
+  start_date: string;
+  end_date: string;
+  initial_capital: number;
+  trading_fee: number;
+  parameters: Record<string, number | string>;
 };
+
+type BacktestResponse = {
+  message: string;
+  metrics: BacktestMetrics;
+  trades: BacktestTrade[];
+  equity_curve: number[];
+};
+
+type AiResponse = {
+  answer: string;
+  provider: string;
+  model: string;
+  live: boolean;
+  error?: string;
+};
+
+const STORAGE_KEY = "fishbowl-backtest-config";
+const defaultForm: BacktestForm = {
+  user_id: 1,
+  asset_id: 1,
+  strategy_id: 1,
+  run_name: "AAPL MA Demo",
+  start_date: "2025-02-01",
+  end_date: "2025-12-15",
+  initial_capital: 10000,
+  trading_fee: 0.001,
+  parameters: { short_window: 10, long_window: 30 },
+};
+
+function coerceParameterValue(parameter: StrategyParameter, value: string): number | string {
+  if (parameter.data_type === "int") {
+    return Number.parseInt(value, 10);
+  }
+  if (parameter.data_type === "float") {
+    return Number.parseFloat(value);
+  }
+  return value;
+}
+
+function normalizeParameters(
+  strategy: Strategy | undefined,
+  current: Record<string, number | string>,
+): Record<string, number | string> {
+  if (!strategy) {
+    return current;
+  }
+
+  const next: Record<string, number | string> = {};
+  for (const parameter of strategy.parameters) {
+    next[parameter.parameter_name] =
+      current[parameter.parameter_name] ?? coerceParameterValue(parameter, parameter.default_value);
+  }
+  return next;
+}
+
+function formatParameterLabel(name: string) {
+  return name
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 export default function BacktestPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
-  const [form, setForm] = useState({
-    user_id: 1,
-    asset_id: 1,
-    strategy_id: 1,
-    run_name: "AAPL MA Demo",
-    start_date: "2025-02-01",
-    end_date: "2025-12-15",
-    initial_capital: 10000,
-    trading_fee: 0.001,
-    parameters: { short_window: 10, long_window: 30 },
-  });
-  const [result, setResult] = useState<any>(null);
+  const [form, setForm] = useState<BacktestForm>(defaultForm);
+  const [positionSize, setPositionSize] = useState(15);
+  const [result, setResult] = useState<BacktestResponse | null>(null);
   const [aiQuestion, setAiQuestion] = useState("How can I improve my strategy performance?");
   const [aiAnswer, setAiAnswer] = useState("");
+  const [aiMeta, setAiMeta] = useState<AiResponse | null>(null);
+  const [loadingWorkspace, setLoadingWorkspace] = useState(true);
+  const [runningBacktest, setRunningBacktest] = useState(false);
+  const [askingAi, setAskingAi] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState("");
+  const [runError, setRunError] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+
+  const selectedStrategy = strategies.find((strategy) => strategy.strategy_id === form.strategy_id);
 
   useEffect(() => {
-    apiFetch<{ assets: Asset[] }>("/assets").then((data) => setAssets(data.assets));
-    apiFetch<{ strategies: Strategy[] }>("/strategies").then((data) => setStrategies(data.strategies));
+    try {
+      const savedConfig = localStorage.getItem(STORAGE_KEY);
+      if (!savedConfig) {
+        return;
+      }
+
+      const parsed = JSON.parse(savedConfig) as { form?: BacktestForm; positionSize?: number };
+      if (parsed.form) {
+        setForm(parsed.form);
+      }
+      if (typeof parsed.positionSize === "number") {
+        setPositionSize(parsed.positionSize);
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWorkspace() {
+      setLoadingWorkspace(true);
+      setWorkspaceError("");
+
+      try {
+        const [assetData, strategyData] = await Promise.all([
+          apiFetch<{ assets: Asset[] }>("/assets"),
+          apiFetch<{ strategies: Strategy[] }>("/strategies"),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setAssets(assetData.assets);
+        setStrategies(strategyData.strategies);
+      } catch (loadError) {
+        if (!cancelled) {
+          setWorkspaceError(getErrorMessage(loadError));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingWorkspace(false);
+        }
+      }
+    }
+
+    loadWorkspace();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!assets.length && !strategies.length) {
+      return;
+    }
+
+    setForm((current) => {
+      const nextAssetId = assets.some((asset) => asset.asset_id === current.asset_id)
+        ? current.asset_id
+        : (assets[0]?.asset_id ?? current.asset_id);
+      const nextStrategyId = strategies.some((strategy) => strategy.strategy_id === current.strategy_id)
+        ? current.strategy_id
+        : (strategies[0]?.strategy_id ?? current.strategy_id);
+      const nextParameters = normalizeParameters(
+        strategies.find((strategy) => strategy.strategy_id === nextStrategyId),
+        current.parameters,
+      );
+
+      if (
+        nextAssetId === current.asset_id &&
+        nextStrategyId === current.strategy_id &&
+        JSON.stringify(nextParameters) === JSON.stringify(current.parameters)
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        asset_id: nextAssetId,
+        strategy_id: nextStrategyId,
+        parameters: nextParameters,
+      };
+    });
+  }, [assets, strategies]);
+
+  function handleStrategyChange(strategyId: number) {
+    const strategy = strategies.find((item) => item.strategy_id === strategyId);
+    setForm((current) => ({
+      ...current,
+      strategy_id: strategyId,
+      parameters: normalizeParameters(strategy, {}),
+    }));
+  }
+
+  function handleParameterChange(parameter: StrategyParameter, rawValue: string) {
+    setForm((current) => ({
+      ...current,
+      parameters: {
+        ...current.parameters,
+        [parameter.parameter_name]: coerceParameterValue(parameter, rawValue),
+      },
+    }));
+  }
+
+  function handleSaveConfig() {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        form,
+        positionSize,
+      }),
+    );
+    setSaveMessage("Config saved in this browser.");
+  }
 
   async function handleRun(event: FormEvent) {
     event.preventDefault();
-    const response = await apiFetch<any>("/backtest/run", {
-      method: "POST",
-      body: JSON.stringify(form),
-    });
-    setResult(response);
+    setRunningBacktest(true);
+    setRunError("");
+    setSaveMessage("");
+
+    try {
+      const response = await apiFetch<BacktestResponse>("/backtest/run", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      setResult(response);
+      setAiAnswer("");
+      setAiMeta(null);
+      setAiError("");
+    } catch (error) {
+      setRunError(getErrorMessage(error));
+    } finally {
+      setRunningBacktest(false);
+    }
   }
 
   async function askAi() {
-    const response = await apiFetch<{ answer: string }>("/assistant/ask", {
-      method: "POST",
-      body: JSON.stringify({ question: aiQuestion, metrics: result?.metrics ?? null }),
-    });
-    setAiAnswer(response.answer);
+    if (!aiQuestion.trim()) {
+      return;
+    }
+
+    setAskingAi(true);
+    setAiError("");
+
+    try {
+      const response = await apiFetch<AiResponse>("/assistant/ask", {
+        method: "POST",
+        body: JSON.stringify({ question: aiQuestion, metrics: result?.metrics ?? null }),
+      });
+      setAiAnswer(response.answer);
+      setAiMeta(response);
+      if (response.error) {
+        setAiError(response.error);
+      }
+    } catch (error) {
+      setAiAnswer("");
+      setAiMeta(null);
+      setAiError(getErrorMessage(error));
+    } finally {
+      setAskingAi(false);
+    }
   }
 
   return (
@@ -63,29 +278,44 @@ export default function BacktestPage() {
           <span className="statusPill">Core module</span>
         </div>
 
+        {workspaceError ? <div className="platformPanel error">{workspaceError}</div> : null}
+
         <form className="strategyForm" onSubmit={handleRun}>
           <label>
             Strategy Template
             <select
               value={form.strategy_id}
-              onChange={(event) => setForm({ ...form, strategy_id: Number(event.target.value) })}
+              onChange={(event) => handleStrategyChange(Number(event.target.value))}
+              disabled={loadingWorkspace || !strategies.length}
             >
-              {strategies.map((strategy) => (
-                <option key={strategy.strategy_id} value={strategy.strategy_id}>
-                  {strategy.strategy_name}
-                </option>
-              ))}
+              {strategies.length ? (
+                strategies.map((strategy) => (
+                  <option key={strategy.strategy_id} value={strategy.strategy_id}>
+                    {strategy.strategy_name}
+                  </option>
+                ))
+              ) : (
+                <option value="">No strategies available</option>
+              )}
             </select>
           </label>
 
           <label>
             Asset Universe
-            <select value={form.asset_id} onChange={(event) => setForm({ ...form, asset_id: Number(event.target.value) })}>
-              {assets.map((asset) => (
-                <option key={asset.asset_id} value={asset.asset_id}>
-                  {asset.symbol}
-                </option>
-              ))}
+            <select
+              value={form.asset_id}
+              onChange={(event) => setForm({ ...form, asset_id: Number(event.target.value) })}
+              disabled={loadingWorkspace || !assets.length}
+            >
+              {assets.length ? (
+                assets.map((asset) => (
+                  <option key={asset.asset_id} value={asset.asset_id}>
+                    {asset.symbol}
+                  </option>
+                ))
+              ) : (
+                <option value="">No assets available</option>
+              )}
             </select>
           </label>
 
@@ -116,39 +346,31 @@ export default function BacktestPage() {
 
           <div className="sliderBlock">
             <div className="sliderHeader">
-              <span>Position Size</span>
-              <strong>15%</strong>
+              <span>Position Size Note</span>
+              <strong>{positionSize}%</strong>
             </div>
-            <input type="range" min="5" max="100" defaultValue="15" />
+            <input type="range" min="5" max="100" value={positionSize} onChange={(event) => setPositionSize(Number(event.target.value))} />
           </div>
 
           <div className="splitInputs">
-            <label>
-              Short Window
-              <input
-                type="number"
-                value={Number(form.parameters.short_window)}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    parameters: { ...form.parameters, short_window: Number(event.target.value) },
-                  })
-                }
-              />
-            </label>
-            <label>
-              Long Window
-              <input
-                type="number"
-                value={Number(form.parameters.long_window)}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    parameters: { ...form.parameters, long_window: Number(event.target.value) },
-                  })
-                }
-              />
-            </label>
+            {selectedStrategy?.parameters.length ? (
+              selectedStrategy.parameters.map((parameter) => (
+                <label key={parameter.parameter_id}>
+                  {formatParameterLabel(parameter.parameter_name)}
+                  <input
+                    type="number"
+                    step={parameter.data_type === "float" ? "0.01" : "1"}
+                    value={String(form.parameters[parameter.parameter_name] ?? parameter.default_value)}
+                    onChange={(event) => handleParameterChange(parameter, event.target.value)}
+                  />
+                </label>
+              ))
+            ) : (
+              <label>
+                Strategy Parameters
+                <input value="No parameters" disabled />
+              </label>
+            )}
           </div>
 
           <label>
@@ -161,18 +383,27 @@ export default function BacktestPage() {
             />
           </label>
 
+          {saveMessage ? <p className="muted">{saveMessage}</p> : null}
+          {runError ? <p className="errorText">{runError}</p> : null}
+
           <div className="buttonRow">
-            <button type="button" className="ghostButton">
+            <button type="button" className="ghostButton" onClick={handleSaveConfig}>
               Save Config
             </button>
-            <button type="submit" className="runButton">
-              Run Backtest
+            <button
+              type="submit"
+              className="runButton"
+              disabled={runningBacktest || loadingWorkspace || !assets.length || !strategies.length}
+            >
+              {runningBacktest ? "Running..." : "Run Backtest"}
             </button>
           </div>
         </form>
       </aside>
 
       <div className="workspaceMain">
+        {loadingWorkspace ? <div className="platformPanel">Loading strategy workspace...</div> : null}
+
         <div className="metricStrip">
           <article className="metricCard positive">
             <span>Total Return</span>
@@ -205,7 +436,7 @@ export default function BacktestPage() {
           <div className="panelHeader">
             <div>
               <h3>Equity Curve</h3>
-              <p>Daily growth vs benchmark</p>
+              <p>Mock chart, real backtest metrics</p>
             </div>
             <div className="tabRow">
               <span className="active">Equity Curve</span>
@@ -219,7 +450,7 @@ export default function BacktestPage() {
             <div className="drawdownBand" />
             <div className="chartCallout">
               <span>{form.run_name}</span>
-              <strong>{result ? percent(result.metrics.total_return) : "+34.7%"}</strong>
+              <strong>{result ? percent(result.metrics.total_return) : "--"}</strong>
             </div>
           </div>
         </article>
@@ -244,8 +475,8 @@ export default function BacktestPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result?.trades?.length ? (
-                    result.trades.map((trade: any) => (
+                  {result?.trades.length ? (
+                    result.trades.map((trade) => (
                       <tr key={trade.trade_id}>
                         <td>{trade.trade_datetime.slice(0, 10)}</td>
                         <td>{trade.trade_action}</td>
@@ -294,7 +525,13 @@ export default function BacktestPage() {
                   ))}
                 </div>
               </div>
+              {aiMeta ? (
+                <p className={aiMeta.live ? "muted" : "errorText"}>
+                  {aiMeta.live ? `Live reply via ${aiMeta.provider}.` : "Using local fallback reply."}
+                </p>
+              ) : null}
               {aiAnswer ? <div className="assistantReply">{aiAnswer}</div> : null}
+              {aiError ? <p className="errorText">{aiError}</p> : null}
               <div className="assistantComposer">
                 <textarea
                   rows={3}
@@ -302,8 +539,8 @@ export default function BacktestPage() {
                   onChange={(event) => setAiQuestion(event.target.value)}
                   placeholder="Ask about strategies, metrics, or backtest results..."
                 />
-                <button type="button" className="sendButton" onClick={askAi}>
-                  Ask
+                <button type="button" className="sendButton" onClick={askAi} disabled={askingAi}>
+                  {askingAi ? "Asking..." : "Ask"}
                 </button>
               </div>
             </div>

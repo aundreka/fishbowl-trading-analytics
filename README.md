@@ -29,29 +29,80 @@ Fishbowl Trading Analytics is a backtesting platform for students, aspiring trad
 
 ## Run Locally
 
-### Backend
+### One Script
 
-```powershell
-cd backend
-.venv\Scripts\python -m uvicorn app.main:app --reload
+From the repository root:
+
+```bash
+./start-local.sh
 ```
+
+What it does:
+
+- creates `.env` from `.env.example` if missing
+- creates `backend/.venv` if missing
+- installs backend dependencies when needed
+- installs frontend dependencies when needed
+- starts backend on `http://localhost:8000`
+- starts frontend on `http://localhost:3000`
+
+Press `Ctrl+C` to stop both servers.
+
+If you want live AI replies, set `OPENROUTER_API_KEY` in the root `.env` before running the script.
 
 ### Frontend
 
-```powershell
+Requirements:
+
+- Node.js 18+
+- npm
+
+From the repository root:
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
+Open `http://localhost:3000`.
+
+The frontend defaults to `http://localhost:8000/api` for API requests. If the backend is not running, the shell still loads, but data-driven pages will show request errors.
+
+### Backend
+
+Requirements:
+
+- Python 3
+
+From the repository root:
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Backend runs at `http://localhost:8000`.
+
+If you need a different API URL for the frontend, create `frontend/.env.local`:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api
+```
+
+For AI replies, create a root `.env` file from `.env.example` and set `OPENROUTER_API_KEY`. Default AI model is `nvidia/nemotron-3-super-120b-a12b:free`.
+
 ### Docker Compose
 
-```powershell
+```bash
 docker compose up --build
 ```
 
 ## Notes
 
-- The repository includes a PostgreSQL schema and seed file in [database/schema.sql](/C:/apps/acads/fishbowl-trading-analytics/database/schema.sql) and [database/seed.sql](/C:/apps/acads/fishbowl-trading-analytics/database/seed.sql).
+- The repository includes PostgreSQL schema and seed files in `database/schema.sql` and `database/seed.sql`.
 - The FastAPI MVP currently uses `backend/backend_data/store.json` so the app works immediately in this workspace without waiting for database drivers or a live database connection.
-- The AI assistant endpoint supports a local educational fallback response and an environment hook for `QWEN_API_KEY`.
+- The AI assistant uses OpenRouter chat completions. Default model is `nvidia/nemotron-3-super-120b-a12b:free`, with local fallback replies if the API key is missing or the request fails.

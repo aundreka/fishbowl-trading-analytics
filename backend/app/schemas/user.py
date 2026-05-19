@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -14,5 +18,5 @@ class UserLogin(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    full_name: str | None = None
-    role: str | None = None
+    full_name: Optional[str] = None
+    role: Optional[str] = None

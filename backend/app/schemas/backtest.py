@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Dict, List, Union
+
 from pydantic import BaseModel, Field
 
 
@@ -10,8 +14,8 @@ class BacktestRequest(BaseModel):
     end_date: str
     initial_capital: float = Field(gt=0)
     trading_fee: float = Field(ge=0, le=0.1)
-    parameters: dict[str, float | int | str] = {}
+    parameters: Dict[str, Union[float, int, str]] = {}
 
 
 class CompareRequest(BaseModel):
-    run_ids: list[int]
+    run_ids: List[int]

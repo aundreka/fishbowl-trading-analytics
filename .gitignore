@@ -3,5 +3,6 @@
 node_modules/
 backend/.venv/
 backend/backend_data/
+files/
 __pycache__/
 *.pyc

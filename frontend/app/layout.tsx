@@ -1,5 +1,6 @@
 import "../styles/globals.css";
 import { AppFrame } from "../components/layout/AppFrame";
+import { AuthGuard } from "../components/auth/AuthGuard";
 
 export const metadata = {
   title: "Fishbowl Trading Analytics",
@@ -10,7 +11,9 @@ export default function RootLayout({ children }: { children: import("react").Rea
   return (
     <html lang="en">
       <body>
-        <AppFrame>{children}</AppFrame>
+        <AuthGuard>
+          <AppFrame>{children}</AppFrame>
+        </AuthGuard>
       </body>
     </html>
   );

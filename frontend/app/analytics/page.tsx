@@ -3,13 +3,42 @@
 import { useEffect, useState } from "react";
 
 import { apiFetch } from "../../lib/api";
+import { BacktestRun, getErrorMessage } from "../../lib/types";
 import { currency, percent } from "../../lib/utils";
 
 export default function AnalyticsPage() {
-  const [runs, setRuns] = useState<any[]>([]);
+  const [runs, setRuns] = useState<BacktestRun[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    apiFetch<{ runs: any[] }>("/backtest/runs").then((data) => setRuns(data.runs));
+    let cancelled = false;
+
+    async function loadRuns() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const data = await apiFetch<{ runs: BacktestRun[] }>("/backtest/runs");
+        if (!cancelled) {
+          setRuns(data.runs);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(getErrorMessage(loadError));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadRuns();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -17,6 +46,8 @@ export default function AnalyticsPage() {
       <article className="panel">
         <p className="eyebrow">Performance Analytics</p>
         <h2>Compare saved backtest sessions</h2>
+        {error ? <p className="errorText">{error}</p> : null}
+        {loading ? <p className="muted">Loading saved runs...</p> : null}
         <div className="tableWrap">
           <table>
             <thead>

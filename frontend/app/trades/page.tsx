@@ -3,26 +3,88 @@
 import { useEffect, useState } from "react";
 
 import { apiFetch } from "../../lib/api";
+import { BacktestMetrics, BacktestRun, BacktestTrade, getErrorMessage } from "../../lib/types";
+
+type RunDetailsResponse = {
+  run: BacktestRun;
+  trades: BacktestTrade[];
+  metrics: BacktestMetrics | null;
+};
 
 export default function TradesPage() {
-  const [runs, setRuns] = useState<any[]>([]);
+  const [runs, setRuns] = useState<BacktestRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<number | null>(null);
-  const [details, setDetails] = useState<any>(null);
+  const [details, setDetails] = useState<RunDetailsResponse | null>(null);
+  const [loadingRuns, setLoadingRuns] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    apiFetch<{ runs: any[] }>("/backtest/runs").then((data) => {
-      setRuns(data.runs);
-      if (data.runs[0]) {
-        setSelectedRun(data.runs[0].backtest_run_id);
+    let cancelled = false;
+
+    async function loadRuns() {
+      setLoadingRuns(true);
+      setError("");
+
+      try {
+        const data = await apiFetch<{ runs: BacktestRun[] }>("/backtest/runs");
+        if (cancelled) {
+          return;
+        }
+
+        setRuns(data.runs);
+        setSelectedRun(data.runs[0]?.backtest_run_id ?? null);
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(getErrorMessage(loadError));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingRuns(false);
+        }
       }
-    });
+    }
+
+    loadRuns();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!selectedRun) {
+      setDetails(null);
       return;
     }
-    apiFetch(`/backtest/runs/${selectedRun}`).then((data) => setDetails(data));
+
+    let cancelled = false;
+
+    async function loadDetails() {
+      setLoadingDetails(true);
+      setError("");
+
+      try {
+        const data = await apiFetch<RunDetailsResponse>(`/backtest/runs/${selectedRun}`);
+        if (!cancelled) {
+          setDetails(data);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(getErrorMessage(loadError));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingDetails(false);
+        }
+      }
+    }
+
+    loadDetails();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedRun]);
 
   return (
@@ -30,16 +92,23 @@ export default function TradesPage() {
       <article className="panel">
         <p className="eyebrow">Trade Logs Viewer</p>
         <h2>Inspect simulated buy and sell events</h2>
+        {error ? <p className="errorText">{error}</p> : null}
+        {loadingRuns ? <p className="muted">Loading runs...</p> : null}
         <label>
           Backtest Run
-          <select value={selectedRun ?? ""} onChange={(event) => setSelectedRun(Number(event.target.value))}>
-            {runs.map((run) => (
-              <option key={run.backtest_run_id} value={run.backtest_run_id}>
-                {run.run_name}
-              </option>
-            ))}
+          <select value={selectedRun ?? ""} onChange={(event) => setSelectedRun(Number(event.target.value))} disabled={!runs.length}>
+            {runs.length ? (
+              runs.map((run) => (
+                <option key={run.backtest_run_id} value={run.backtest_run_id}>
+                  {run.run_name}
+                </option>
+              ))
+            ) : (
+              <option value="">No runs available</option>
+            )}
           </select>
         </label>
+        {loadingDetails ? <p className="muted">Loading trades...</p> : null}
         <div className="tableWrap">
           <table>
             <thead>
@@ -52,8 +121,8 @@ export default function TradesPage() {
               </tr>
             </thead>
             <tbody>
-              {details?.trades?.length ? (
-                details.trades.map((trade: any) => (
+              {details?.trades.length ? (
+                details.trades.map((trade) => (
                   <tr key={trade.trade_id}>
                     <td>{trade.trade_datetime.slice(0, 10)}</td>
                     <td>{trade.trade_action}</td>
