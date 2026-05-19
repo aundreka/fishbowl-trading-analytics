@@ -12,6 +12,18 @@ type Asset = {
   asset_type_id: number;
   asset_type: string;
   price_points: number;
+  dataset_name?: string;
+  dataset_uploaded_at?: string;
+  dataset_rows?: number;
+  first_price_date?: string | null;
+  last_price_date?: string | null;
+  datasets?: Array<{
+    dataset_id: number;
+    dataset_name: string;
+    price_points: number;
+    first_price_date?: string | null;
+    last_price_date?: string | null;
+  }>;
 };
 
 type AssetType = { asset_type_id: number; type_name: string };
@@ -91,6 +103,8 @@ export default function AssetsPage() {
                   <th>Symbol</th>
                   <th>Name</th>
                   <th>Type</th>
+                  <th>Dataset</th>
+                  <th>Date Range</th>
                   <th>Price Rows</th>
                 </tr>
               </thead>
@@ -100,6 +114,16 @@ export default function AssetsPage() {
                     <td>{asset.symbol}</td>
                     <td>{asset.asset_name}</td>
                     <td>{asset.asset_type}</td>
+                    <td>
+                      {asset.datasets?.length
+                        ? asset.datasets.map((dataset) => dataset.dataset_name).join(", ")
+                        : (asset.dataset_name ?? "Seeded data")}
+                    </td>
+                    <td>
+                      {asset.first_price_date && asset.last_price_date
+                        ? `${asset.first_price_date} to ${asset.last_price_date}`
+                        : "N/A"}
+                    </td>
                     <td>{asset.price_points}</td>
                   </tr>
                 ))}

@@ -19,5 +19,7 @@ class AssetUpdate(BaseModel):
 
 
 class HistoricalDataUpload(BaseModel):
-    asset_id: int
+    asset_id: Optional[int] = None
+    symbol: Optional[str] = Field(default=None, max_length=20)
     csv_content: str = Field(min_length=10)
+    dataset_name: Optional[str] = Field(default=None, max_length=100)

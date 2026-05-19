@@ -181,6 +181,37 @@ td {
   border: 1px solid rgba(122, 152, 188, 0.12);
 }
 
+.buttonRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+.buttonRow .ghostButton,
+.buttonRow .runButton {
+  min-width: 0;
+}
+
+.assetDatasetCard {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(33, 201, 139, 0.22);
+  border-radius: 10px;
+  background: rgba(33, 201, 139, 0.06);
+  color: #d6e0ee;
+  font-size: 0.82rem;
+}
+
+.assetDatasetCard strong {
+  color: white;
+  font-size: 0.95rem;
+}
+
+.assetDatasetCard span {
+  color: var(--muted);
+}
+
 .loginDivider {
   text-align: center;
   color: #6f8399;
@@ -435,7 +466,8 @@ td {
   flex-wrap: wrap;
 }
 
-.tabRow span {
+.tabRow span,
+.tabRow button {
   padding: 0.45rem 0.7rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
@@ -446,6 +478,93 @@ td {
 .tabRow .active {
   background: rgba(33, 201, 139, 0.14);
   color: #e2fff1;
+}
+
+.tradePlaybackChart {
+  position: relative;
+  min-height: 390px;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(12, 27, 45, 0.95), rgba(9, 18, 30, 0.96));
+  background-size: 100% 20%, 14% 100%, auto;
+}
+
+.tradePlaybackChart svg {
+  display: block;
+  width: 100%;
+  height: 390px;
+}
+
+.chartGridLine {
+  stroke: rgba(166, 190, 219, 0.12);
+  stroke-width: 1;
+}
+
+.chartLabel {
+  fill: #8ea4bd;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.equityArea {
+  fill: url("#equityFill");
+}
+
+.equityLine {
+  fill: none;
+  stroke: #23d18b;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.buyMarker,
+.sellMarker {
+  stroke: #081522;
+  stroke-width: 3;
+}
+
+.buyMarker {
+  fill: #21c98b;
+}
+
+.sellMarker {
+  fill: #ff7080;
+}
+
+.tradeMarkerLabel {
+  fill: #dce7f5;
+  font-size: 24px;
+  font-weight: 800;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(8, 21, 34, 0.95);
+  stroke-width: 5px;
+}
+
+.playheadLine {
+  stroke: rgba(255, 255, 255, 0.42);
+  stroke-dasharray: 8 8;
+  stroke-width: 2;
+}
+
+.playheadDot {
+  fill: white;
+  stroke: #21c98b;
+  stroke-width: 4;
+}
+
+.emptyPlayback {
+  min-height: 390px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
+  padding: 1rem;
 }
 
 .mockChart {
@@ -773,6 +892,11 @@ input[type="range"] {
   overflow-x: auto;
 }
 
+.tradePanel .tableWrap {
+  overflow-y: auto;
+  max-height: 480px;
+}
+
 .eyebrow {
   margin: 0;
   color: var(--green);
@@ -851,7 +975,6 @@ input[type="range"] {
   }
 
   .splitInputs,
-  .buttonRow,
   .assistantComposer {
     grid-template-columns: 1fr;
   }

@@ -6,3 +6,4 @@ backend/backend_data/
 files/
 __pycache__/
 *.pyc
+.ignore

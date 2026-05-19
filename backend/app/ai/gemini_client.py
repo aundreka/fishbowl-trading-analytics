@@ -7,66 +7,101 @@ from urllib.request import Request, urlopen
 
 from app.ai.prompts import SYSTEM_PROMPT
 from app.config import (
-    OPENROUTER_API_KEY,
-    OPENROUTER_API_URL,
-    OPENROUTER_APP_NAME,
-    OPENROUTER_MODEL,
-    OPENROUTER_SITE_URL,
-    OPENROUTER_TIMEOUT_SECONDS,
+    GEMINI_API_KEY,
+    GEMINI_API_URL,
+    GEMINI_APP_NAME,
+    GEMINI_MODEL,
+    GEMINI_SITE_URL,
+    GEMINI_TIMEOUT_SECONDS,
 )
 
 
-def ask_openrouter(question: str, context: dict | None = None) -> dict:
+def ask_gemini(
+    question: str,
+    context: dict | None = None,
+    system_prompt: str | None = None,
+    max_tokens: int = 220,
+    temperature: float = 0.3,
+    use_local_fallback: bool = True,
+) -> dict:
     context = context or {}
 
-    if not OPENROUTER_API_KEY:
-        return _local_fallback(question, context, "OPENROUTER_API_KEY is not configured.")
+    if not GEMINI_API_KEY:
+        if use_local_fallback:
+            return _local_fallback(question, context, "GEMINI_API_KEY is not configured.")
+        return {
+            "provider": "local-fallback",
+            "model": "local-fallback",
+            "live": False,
+            "answer": "",
+            "error": "GEMINI_API_KEY is not configured.",
+        }
 
     payload = {
-        "model": OPENROUTER_MODEL,
+        "model": GEMINI_MODEL,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt or SYSTEM_PROMPT},
             {"role": "user", "content": _build_user_prompt(question, context)},
         ],
-        "reasoning": {
-            "effort": "none",
-            "exclude": True,
-        },
-        "temperature": 0.3,
-        "max_tokens": 220,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
     }
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {GEMINI_API_KEY}",
         "Content-Type": "application/json",
     }
 
-    if OPENROUTER_SITE_URL:
-        headers["HTTP-Referer"] = OPENROUTER_SITE_URL
-    if OPENROUTER_APP_NAME:
-        headers["X-OpenRouter-Title"] = OPENROUTER_APP_NAME
+    if GEMINI_SITE_URL:
+        headers["HTTP-Referer"] = GEMINI_SITE_URL
+    if GEMINI_APP_NAME:
+        headers["X-Gemini-Title"] = GEMINI_APP_NAME
 
     request = Request(
-        OPENROUTER_API_URL,
+        GEMINI_API_URL,
         data=json.dumps(payload).encode("utf-8"),
         headers=headers,
         method="POST",
     )
 
     try:
-        with urlopen(request, timeout=OPENROUTER_TIMEOUT_SECONDS) as response:
+        with urlopen(request, timeout=GEMINI_TIMEOUT_SECONDS) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
-        return _local_fallback(question, context, _read_http_error(exc))
+        if use_local_fallback:
+            return _local_fallback(question, context, _read_http_error(exc))
+        return {
+            "provider": "gemini",
+            "model": GEMINI_MODEL,
+            "live": False,
+            "answer": "",
+            "error": _read_http_error(exc),
+        }
     except (URLError, SocketTimeout, TimeoutError, json.JSONDecodeError, ValueError) as exc:
-        return _local_fallback(question, context, f"OpenRouter request failed: {exc}")
+        if use_local_fallback:
+            return _local_fallback(question, context, f"Gemini request failed: {exc}")
+        return {
+            "provider": "gemini",
+            "model": GEMINI_MODEL,
+            "live": False,
+            "answer": "",
+            "error": f"Gemini request failed: {exc}",
+        }
 
     answer = _extract_answer(response_payload)
     if not answer:
-        return _local_fallback(question, context, "OpenRouter returned an empty answer.")
+        if use_local_fallback:
+            return _local_fallback(question, context, "Gemini returned an empty answer.")
+        return {
+            "provider": "gemini",
+            "model": response_payload.get("model", GEMINI_MODEL),
+            "live": False,
+            "answer": "",
+            "error": "Gemini returned an empty answer.",
+        }
 
     return {
-        "provider": "openrouter",
-        "model": response_payload.get("model", OPENROUTER_MODEL),
+        "provider": "gemini",
+        "model": response_payload.get("model", GEMINI_MODEL),
         "live": True,
         "answer": answer,
     }
@@ -114,8 +149,8 @@ def _read_http_error(exc: HTTPError) -> str:
         body = ""
 
     if body:
-        return f"OpenRouter request failed: HTTP {exc.code} - {body}"
-    return f"OpenRouter request failed: HTTP {exc.code}"
+        return f"Gemini request failed: HTTP {exc.code} - {body}"
+    return f"Gemini request failed: HTTP {exc.code}"
 
 
 def _local_fallback(question: str, context: dict, error: str | None = None) -> dict:

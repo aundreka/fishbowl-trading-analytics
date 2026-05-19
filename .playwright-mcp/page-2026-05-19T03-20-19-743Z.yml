@@ -1,0 +1,175 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e3]: Fishbowl Trading Analytics
+  - button "Open Next.js Dev Tools" [ref=e9] [cursor=pointer]:
+    - img [ref=e10]
+  - generic [ref=e13]:
+    - complementary [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: FB
+        - generic [ref=e17]:
+          - strong [ref=e18]: Fishbowl
+          - generic [ref=e19]: Trading Analytics
+      - generic [ref=e20]:
+        - paragraph [ref=e21]: Overview
+        - generic [ref=e22]:
+          - link "Dashboard" [ref=e23] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e24]: Dashboard
+          - link "Performance" [ref=e25] [cursor=pointer]:
+            - /url: /analytics
+            - generic [ref=e26]: Performance
+      - generic [ref=e27]:
+        - paragraph [ref=e28]: Strategy Lab
+        - generic [ref=e29]:
+          - link "Backtesting Core" [ref=e30] [cursor=pointer]:
+            - /url: /backtest
+            - generic [ref=e31]: Backtesting
+            - generic [ref=e32]: Core
+          - link "Strategy Builder" [ref=e33] [cursor=pointer]:
+            - /url: /strategies
+            - generic [ref=e34]: Strategy Builder
+          - link "Optimization" [ref=e35] [cursor=pointer]:
+            - /url: /data-upload
+            - generic [ref=e36]: Optimization
+      - generic [ref=e37]:
+        - paragraph [ref=e38]: Analysis
+        - generic [ref=e39]:
+          - link "Asset Universe" [ref=e40] [cursor=pointer]:
+            - /url: /assets
+            - generic [ref=e41]: Asset Universe
+          - link "Trade Journal" [ref=e42] [cursor=pointer]:
+            - /url: /trades
+            - generic [ref=e43]: Trade Journal
+          - link "Admin Panel" [ref=e44] [cursor=pointer]:
+            - /url: /users
+            - generic [ref=e45]: Admin Panel
+      - generic [ref=e46]:
+        - paragraph [ref=e47]: Demo Access
+        - generic [ref=e48]: admin@fishbowl.local
+        - generic [ref=e49]: fishbowl123
+    - generic [ref=e50]:
+      - banner [ref=e51]:
+        - generic [ref=e52]:
+          - paragraph [ref=e53]: Simulation Workspace
+          - heading "Dashboard" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - generic [ref=e56]: Live market data off
+          - link "New Backtest" [ref=e57] [cursor=pointer]:
+            - /url: /backtest
+      - main [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - generic [ref=e61]:
+              - paragraph [ref=e62]: Overview
+              - heading "Observe trading behavior inside a safe historical simulation lab." [level=2] [ref=e63]
+            - generic [ref=e64]:
+              - generic [ref=e65]: 4 saved runs
+              - generic [ref=e66]: Real metrics loaded
+          - generic [ref=e67]:
+            - article [ref=e68]:
+              - generic [ref=e69]: Total Return
+              - strong [ref=e70]: 35.67%
+              - generic [ref=e71]: Best run in workspace
+            - article [ref=e72]:
+              - generic [ref=e73]: Average Sharpe
+              - strong [ref=e74]: "4.815"
+              - generic [ref=e75]: Risk-adjusted score
+            - article [ref=e76]:
+              - generic [ref=e77]: Assets Tracked
+              - strong [ref=e78]: "2"
+              - generic [ref=e79]: Instrument library
+            - article [ref=e80]:
+              - generic [ref=e81]: Saved Runs
+              - strong [ref=e82]: "4"
+              - generic [ref=e83]: Simulation history
+            - article [ref=e84]:
+              - generic [ref=e85]: Researchers
+              - strong [ref=e86]: "2"
+              - generic [ref=e87]: Active accounts
+          - generic [ref=e88]:
+            - article [ref=e89]:
+              - generic [ref=e90]:
+                - generic [ref=e91]:
+                  - heading "Equity Curve" [level=3] [ref=e92]
+                  - paragraph [ref=e93]: Mock chart, real best-run callout
+                - generic [ref=e94]:
+                  - generic [ref=e95]: Strategy
+                  - generic [ref=e96]: Benchmark
+              - generic [ref=e100]:
+                - generic [ref=e101]: Moving Average Crossover
+                - strong [ref=e102]: 35.67%
+            - article [ref=e103]:
+              - generic [ref=e105]:
+                - heading "Asset Mix" [level=3] [ref=e106]
+                - paragraph [ref=e107]: By tracked instruments
+              - generic [ref=e108]:
+                - generic [ref=e110]:
+                  - strong [ref=e111]: $10,000.00
+                  - generic [ref=e112]: avg start capital
+                - list [ref=e113]:
+                  - listitem [ref=e114]: Stock 50%
+                  - listitem [ref=e116]: Crypto 50%
+            - article [ref=e118]:
+              - generic [ref=e120]:
+                - heading "Active Strategies" [level=3] [ref=e121]
+                - paragraph [ref=e122]: Best result by template
+              - generic [ref=e123]:
+                - generic [ref=e124]:
+                  - generic [ref=e125]: Moving Average Crossover
+                  - strong [ref=e126]: 35.67%
+                - generic [ref=e127]:
+                  - generic [ref=e128]: RSI Reversal
+                  - strong [ref=e129]: No runs yet
+            - article [ref=e130]:
+              - generic [ref=e132]:
+                - heading "Risk Metrics" [level=3] [ref=e133]
+                - paragraph [ref=e134]: Derived from saved runs
+              - generic [ref=e135]:
+                - generic [ref=e136]:
+                  - generic [ref=e137]: Average Sharpe
+                  - strong [ref=e140]: "4.815"
+                - generic [ref=e141]:
+                  - generic [ref=e142]: Best Return
+                  - strong [ref=e145]: 35.67%
+                - generic [ref=e146]:
+                  - generic [ref=e147]: Worst Drawdown
+                  - strong [ref=e150]: "-2.48%"
+                - generic [ref=e151]:
+                  - generic [ref=e152]: Average Win Rate
+                  - strong [ref=e155]: 100.00%
+            - article [ref=e156]:
+              - generic [ref=e158]:
+                - heading "Recent Returns" [level=3] [ref=e159]
+                - paragraph [ref=e160]: Latest saved backtests
+              - generic [ref=e161]:
+                - generic [ref=e162]: "36"
+                - generic [ref=e163]: "36"
+                - generic [ref=e164]: "36"
+                - generic [ref=e165]: "36"
+          - article [ref=e166]:
+            - generic [ref=e168]:
+              - heading "Recent Backtest Sessions" [level=3] [ref=e169]
+              - paragraph [ref=e170]: Saved runs for comparison
+            - table [ref=e172]:
+              - rowgroup [ref=e173]:
+                - row "Run Created Focus" [ref=e174]:
+                  - columnheader "Run" [ref=e175]
+                  - columnheader "Created" [ref=e176]
+                  - columnheader "Focus" [ref=e177]
+              - rowgroup [ref=e178]:
+                - row "AAPL MA Demo 5/19/2026, 2:34:03 AM Moving Average Crossover" [ref=e179]:
+                  - cell "AAPL MA Demo" [ref=e180]
+                  - cell "5/19/2026, 2:34:03 AM" [ref=e181]
+                  - cell "Moving Average Crossover" [ref=e182]
+                - row "AAPL MA Demo 5/19/2026, 2:34:03 AM Moving Average Crossover" [ref=e183]:
+                  - cell "AAPL MA Demo" [ref=e184]
+                  - cell "5/19/2026, 2:34:03 AM" [ref=e185]
+                  - cell "Moving Average Crossover" [ref=e186]
+                - row "AAPL MA Demo 5/19/2026, 2:33:49 AM Moving Average Crossover" [ref=e187]:
+                  - cell "AAPL MA Demo" [ref=e188]
+                  - cell "5/19/2026, 2:33:49 AM" [ref=e189]
+                  - cell "Moving Average Crossover" [ref=e190]
+                - row "AAPL MA Demo 5/3/2026, 3:09:41 PM Moving Average Crossover" [ref=e191]:
+                  - cell "AAPL MA Demo" [ref=e192]
+                  - cell "5/3/2026, 3:09:41 PM" [ref=e193]
+                  - cell "Moving Average Crossover" [ref=e194]

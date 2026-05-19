@@ -13,7 +13,7 @@ from app.config import DATA_DIR, STORE_PATH
 STORE_LOCK = threading.Lock()
 
 
-def _generate_price_series(asset_id: int, base_price: float, drift: float, amplitude: float) -> list[dict]:
+def _generate_price_series(asset_id: int, dataset_id: int, base_price: float, drift: float, amplitude: float) -> list[dict]:
     start_date = date(2025, 1, 1)
     series: list[dict] = []
     for day in range(365):
@@ -26,6 +26,7 @@ def _generate_price_series(asset_id: int, base_price: float, drift: float, ampli
             {
                 "price_id": len(series) + 1 if asset_id == 1 else len(series) + 366,
                 "asset_id": asset_id,
+                "dataset_id": dataset_id,
                 "price_datetime": f"{current.isoformat()}T00:00:00",
                 "open_price": round(open_price, 4),
                 "high_price": round(high, 4),
@@ -38,8 +39,8 @@ def _generate_price_series(asset_id: int, base_price: float, drift: float, ampli
 
 
 def _default_store() -> dict:
-    prices = _generate_price_series(1, 145.0, 0.18, 6.5)
-    prices.extend(_generate_price_series(2, 41000.0, 22.0, 1800.0))
+    prices = _generate_price_series(1, 1, 145.0, 0.18, 6.5)
+    prices.extend(_generate_price_series(2, 2, 41000.0, 22.0, 1800.0))
     return {
         "users": [
             {
@@ -78,6 +79,22 @@ def _default_store() -> dict:
                 "symbol": "BTCUSD",
                 "asset_name": "Bitcoin / US Dollar",
                 "market": "CRYPTO",
+            },
+        ],
+        "price_datasets": [
+            {
+                "dataset_id": 1,
+                "asset_id": 1,
+                "dataset_name": "Seeded AAPL 2025",
+                "uploaded_at": datetime.utcnow().isoformat(),
+                "source": "seed",
+            },
+            {
+                "dataset_id": 2,
+                "asset_id": 2,
+                "dataset_name": "Seeded BTCUSD 2025",
+                "uploaded_at": datetime.utcnow().isoformat(),
+                "source": "seed",
             },
         ],
         "historical_prices": prices,
@@ -136,7 +153,46 @@ def _default_store() -> dict:
         "backtest_run_parameters": [],
         "simulated_trades": [],
         "performance_metrics": [],
-    }
+}
+
+
+def _migrate_store(store: dict) -> tuple[dict, bool]:
+    changed = False
+    if "price_datasets" not in store:
+        store["price_datasets"] = []
+        changed = True
+
+    datasets = store["price_datasets"]
+    assets = store.get("assets", [])
+    prices = store.get("historical_prices", [])
+    next_dataset_id = max((int(row.get("dataset_id", 0)) for row in datasets), default=0) + 1
+
+    for asset in assets:
+        asset_id = asset["asset_id"]
+        asset_prices = [price for price in prices if price.get("asset_id") == asset_id]
+        if not asset_prices:
+            continue
+
+        existing_dataset = next((row for row in datasets if row.get("asset_id") == asset_id), None)
+        if not existing_dataset:
+            dataset_name = asset.get("dataset_name") or f"Seeded {asset.get('symbol', 'Asset')} data"
+            existing_dataset = {
+                "dataset_id": next_dataset_id,
+                "asset_id": asset_id,
+                "dataset_name": dataset_name,
+                "uploaded_at": asset.get("dataset_uploaded_at") or datetime.utcnow().isoformat(),
+                "source": "upload" if asset.get("dataset_name") else "seed",
+            }
+            datasets.append(existing_dataset)
+            next_dataset_id += 1
+            changed = True
+
+        for price in asset_prices:
+            if "dataset_id" not in price:
+                price["dataset_id"] = existing_dataset["dataset_id"]
+                changed = True
+
+    return store, changed
 
 
 def ensure_store() -> None:
@@ -144,6 +200,15 @@ def ensure_store() -> None:
     Path(STORE_PATH).parent.mkdir(parents=True, exist_ok=True)
     if not Path(STORE_PATH).exists():
         write_store(_default_store())
+        return
+
+    with STORE_LOCK:
+        with open(STORE_PATH, "r", encoding="utf-8") as file:
+            store = json.load(file)
+        store, changed = _migrate_store(store)
+        if changed:
+            with open(STORE_PATH, "w", encoding="utf-8") as file:
+                json.dump(store, file, indent=2)
 
 
 def read_store() -> dict:

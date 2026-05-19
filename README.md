@@ -1,82 +1,51 @@
-# Fishbowl Trading Analytics
+# Fishbowl Trading Analytics 
 
-Fishbowl Trading Analytics is a backtesting platform for students, aspiring traders, and finance enthusiasts who want to test strategies in a controlled environment without risking real money.
+Fishbowl Trading Analytics is a full-stack backtesting platform designed for students, aspiring traders, and finance enthusiasts. It provides a controlled environment to test trading strategies against historical data, visualize equity curves dynamically, and consult an AI assistant for performance tuning—all without risking real capital.
 
-## Stack
+## Key Features
 
-- Backend: FastAPI
-- Frontend: Next.js App Router with TypeScript
-- Target database: PostgreSQL
-- Local MVP data store: JSON file for immediate demo use
-- Deployment: Docker Compose
+- **Backtesting Engine:** Run simulated trading strategies with customizable parameters, capital, and fees.
+- **Dynamic Playback Chart:** Watch your equity curve and trades plot in real-time with an auto-zooming timeline and playhead indicators.
+- **Fishbowl AI Strategy Assistant:** Integrated with Google Gemini (`gemini-2.5-flash`) to analyze your backtest metrics and suggest configuration tunes.
+- **Historical Data Upload:** Import custom CSV market data. The AI assistant maps unfamiliar column headers automatically.
+- **Trade Logging & Analytics:** Track every simulated execution and measure performance via Sharpe Ratio, Max Drawdown, Win Rate, and Total Return.
 
-## Modules
+## Tech Stack
 
-- Login / authentication
-- User management
-- Asset management
-- Historical data upload and validation
-- Strategy management
-- Backtesting dashboard
-- Trade logs viewer
-- Performance analytics
-- Fishbowl AI Strategy Assistant
+- **Backend:** Python, FastAPI
+- **Frontend:** Next.js (App Router), React, TypeScript, Pure Vanilla CSS
+- **AI Integration:** Google Gemini API (OpenAI compatible endpoint)
+- **Data Store:** JSON file MVP (with a PostgreSQL schema ready for production)
+- **Deployment:** Docker & Docker Compose
 
-## Demo Accounts
+## Getting Started
 
-- `admin@fishbowl.local` / `fishbowl123`
-- `user@fishbowl.local` / `fishbowl123`
+### Demo Accounts
 
-## Run Locally
+- **Admin:** `admin@fishbowl.local` / `fishbowl123`
+- **User:** `user@fishbowl.local` / `fishbowl123`
 
-### One Script
+### 1. Quick Start (Recommended)
 
-From the repository root:
+From the repository root, run the setup script. It automatically manages virtual environments, installs dependencies, and launches both servers.
 
 ```bash
 ./start-local.sh
 ```
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
 
-What it does:
+### 2. Docker Compose
 
-- creates `.env` from `.env.example` if missing
-- creates `backend/.venv` if missing
-- installs backend dependencies when needed
-- installs frontend dependencies when needed
-- starts backend on `http://localhost:8000`
-- starts frontend on `http://localhost:3000`
-
-Press `Ctrl+C` to stop both servers.
-
-If you want live AI replies, set `OPENROUTER_API_KEY` in the root `.env` before running the script.
-
-### Frontend
-
-Requirements:
-
-- Node.js 18+
-- npm
-
-From the repository root:
+To run the entire stack in isolated containers:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose up --build
 ```
 
-Open `http://localhost:3000`.
+### 3. Manual Setup
 
-The frontend defaults to `http://localhost:8000/api` for API requests. If the backend is not running, the shell still loads, but data-driven pages will show request errors.
-
-### Backend
-
-Requirements:
-
-- Python 3
-
-From the repository root:
-
+**Backend (Python 3):**
 ```bash
 cd backend
 python -m venv .venv
@@ -85,24 +54,26 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Backend runs at `http://localhost:8000`.
-
-If you need a different API URL for the frontend, create `frontend/.env.local`:
-
+**Frontend (Node.js 18+):**
 ```bash
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api
+cd frontend
+npm install
+npm run dev
 ```
 
-For AI replies, create a root `.env` file from `.env.example` and set `OPENROUTER_API_KEY`. Default AI model is `nvidia/nemotron-3-super-120b-a12b:free`.
+## AI Configuration & Environment
 
-### Docker Compose
+To enable live AI replies and automatic configuration tuning, copy `.env.example` to `.env` in the root directory and add your Google Gemini API key:
 
-```bash
-docker compose up --build
+```env
+GEMINI_API_KEY="your_google_ai_studio_key"
+GEMINI_MODEL="gemini-2.5-flash"
+GEMINI_API_URL="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 ```
 
-## Notes
+If the API key is missing or the request fails, the application will seamlessly fall back to local, canned responses.
 
-- The repository includes PostgreSQL schema and seed files in `database/schema.sql` and `database/seed.sql`.
-- The FastAPI MVP currently uses `backend/backend_data/store.json` so the app works immediately in this workspace without waiting for database drivers or a live database connection.
-- The AI assistant uses OpenRouter chat completions. Default model is `nvidia/nemotron-3-super-120b-a12b:free`, with local fallback replies if the API key is missing or the request fails.
+## Architecture Notes
+
+- **Database:** The repository includes PostgreSQL schema and seed files in `database/schema.sql` and `database/seed.sql`.
+- **MVP State:** The FastAPI backend currently uses a local JSON file (`backend/backend_data/store.json`) for persistence, ensuring the app works instantly without waiting for database driver configurations.

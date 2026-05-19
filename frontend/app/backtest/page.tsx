@@ -1,14 +1,15 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, useRef } from "react";
 
 import { apiFetch } from "../../lib/api";
-import { Asset, BacktestMetrics, BacktestTrade, Strategy, StrategyParameter, getErrorMessage } from "../../lib/types";
+import { Asset, BacktestMetrics, BacktestTrade, PriceDataset, Strategy, StrategyParameter, getErrorMessage } from "../../lib/types";
 import { currency, percent } from "../../lib/utils";
 
 type BacktestForm = {
   user_id: number;
   asset_id: number;
+  dataset_id: number | null;
   strategy_id: number;
   run_name: string;
   start_date: string;
@@ -23,6 +24,13 @@ type BacktestResponse = {
   metrics: BacktestMetrics;
   trades: BacktestTrade[];
   equity_curve: number[];
+  equity_points: EquityPoint[];
+};
+
+type EquityPoint = {
+  price_datetime: string;
+  equity: number;
+  close_price: number;
 };
 
 type AiResponse = {
@@ -33,10 +41,21 @@ type AiResponse = {
   error?: string;
 };
 
+type AiConfigTuneResponse = {
+  provider: string;
+  model: string;
+  live: boolean;
+  config: BacktestForm;
+  position_size: number;
+  summary: string;
+  error?: string;
+};
+
 const STORAGE_KEY = "fishbowl-backtest-config";
 const defaultForm: BacktestForm = {
   user_id: 1,
   asset_id: 1,
+  dataset_id: null,
   strategy_id: 1,
   run_name: "AAPL MA Demo",
   start_date: "2025-02-01",
@@ -79,24 +98,204 @@ function formatParameterLabel(name: string) {
     .join(" ");
 }
 
+type DatasetOption = {
+  asset: Asset;
+  dataset: PriceDataset;
+};
+
+function datasetSearchText(option: DatasetOption) {
+  const { asset, dataset } = option;
+  return [
+    asset.symbol,
+    asset.asset_name,
+    asset.market,
+    asset.asset_type,
+    dataset.dataset_name,
+    dataset.first_price_date ?? "",
+    dataset.last_price_date ?? "",
+    dataset.source ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function formatDatasetOption(option: DatasetOption) {
+  const { asset, dataset } = option;
+  const range = dataset.first_price_date && dataset.last_price_date ? `${dataset.first_price_date} to ${dataset.last_price_date}` : "No dates";
+  return `${asset.symbol} - ${dataset.dataset_name} - ${dataset.price_points} rows - ${range}`;
+}
+
+function scaleValue(value: number, minimum: number, maximum: number, outputMinimum: number, outputMaximum: number) {
+  if (maximum === minimum) {
+    return (outputMinimum + outputMaximum) / 2;
+  }
+
+  return outputMaximum - ((value - minimum) / (maximum - minimum)) * (outputMaximum - outputMinimum);
+}
+
+function buildLinePath(points: EquityPoint[], totalPoints: number, minimum: number, maximum: number) {
+  if (!points.length) {
+    return "";
+  }
+
+  return points
+    .map((point, index) => {
+      const x = totalPoints === 1 ? 0 : (index / (totalPoints - 1)) * 1000;
+      const y = scaleValue(point.equity, minimum, maximum, 20, 280);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function buildAreaPath(points: EquityPoint[], totalPoints: number, minimum: number, maximum: number) {
+  const linePath = buildLinePath(points, totalPoints, minimum, maximum);
+  if (!linePath) {
+    return "";
+  }
+
+  const endX = totalPoints === 1 ? 0 : ((points.length - 1) / (totalPoints - 1)) * 1000;
+  return `${linePath} L ${endX} 290 L 0 290 Z`;
+}
+
+function pointPosition(index: number, total: number, equity: number, minimum: number, maximum: number) {
+  return {
+    x: total === 1 ? 0 : (index / (total - 1)) * 1000,
+    y: scaleValue(equity, minimum, maximum, 20, 280),
+  };
+}
+
 export default function BacktestPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [form, setForm] = useState<BacktestForm>(defaultForm);
+  const [datasetQuery, setDatasetQuery] = useState("");
   const [positionSize, setPositionSize] = useState(15);
   const [result, setResult] = useState<BacktestResponse | null>(null);
+  const [playbackIndex, setPlaybackIndex] = useState(0);
+  const [playingPlayback, setPlayingPlayback] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panIndex, setPanIndex] = useState(0);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [aiQuestion, setAiQuestion] = useState("How can I improve my strategy performance?");
   const [aiAnswer, setAiAnswer] = useState("");
   const [aiMeta, setAiMeta] = useState<AiResponse | null>(null);
   const [loadingWorkspace, setLoadingWorkspace] = useState(true);
   const [runningBacktest, setRunningBacktest] = useState(false);
   const [askingAi, setAskingAi] = useState(false);
+  const [tuningConfig, setTuningConfig] = useState(false);
   const [workspaceError, setWorkspaceError] = useState("");
   const [runError, setRunError] = useState("");
   const [aiError, setAiError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
 
   const selectedStrategy = strategies.find((strategy) => strategy.strategy_id === form.strategy_id);
+  const selectedAsset = assets.find((asset) => asset.asset_id === form.asset_id);
+  const datasetOptions = assets.flatMap((asset) =>
+    (asset.datasets ?? []).map((dataset) => ({
+      asset,
+      dataset,
+    })),
+  );
+  const selectedDatasetOption =
+    datasetOptions.find((option) => option.dataset.dataset_id === form.dataset_id) ??
+    datasetOptions.find((option) => option.asset.asset_id === form.asset_id);
+  const selectedDataset = selectedDatasetOption?.dataset;
+  const normalizedDatasetQuery = datasetQuery.trim().toLowerCase();
+  const filteredDatasetOptions = normalizedDatasetQuery
+    ? datasetOptions.filter((option) => datasetSearchText(option).includes(normalizedDatasetQuery))
+    : datasetOptions;
+  const visibleDatasetOptions =
+    selectedDatasetOption &&
+    !filteredDatasetOptions.some((option) => option.dataset.dataset_id === selectedDatasetOption.dataset.dataset_id)
+      ? [selectedDatasetOption, ...filteredDatasetOptions]
+      : filteredDatasetOptions;
+  const equityPoints = result?.equity_points ?? [];
+  const lastPlaybackIndex = Math.max(equityPoints.length - 1, 0);
+  const activePlaybackIndex = Math.min(playbackIndex, lastPlaybackIndex);
+  
+  const availablePoints = activePlaybackIndex + 1;
+  const visibleCount = Math.max(10, Math.floor(availablePoints / zoomLevel));
+  const maxPan = Math.max(0, availablePoints - visibleCount);
+  const clampedPan = Math.max(0, Math.min(panIndex, maxPan));
+  const startIndex = Math.max(0, availablePoints - visibleCount - clampedPan);
+  
+  const visibleEquityPoints = equityPoints.slice(startIndex, startIndex + visibleCount);
+  const visibleEquityValues = visibleEquityPoints.map((point) => point.equity);
+  const minimumEquity = visibleEquityValues.length ? Math.min(...visibleEquityValues) : 0;
+  const maximumEquity = visibleEquityValues.length ? Math.max(...visibleEquityValues) : 1;
+  
+  // Use a smaller padding ratio when zoomed in to maximize screen space
+  const spread = maximumEquity - minimumEquity;
+  const equityPadding = spread === 0 ? minimumEquity * 0.05 : spread * 0.1;
+  const chartMinimum = minimumEquity - equityPadding;
+  const chartMaximum = maximumEquity + equityPadding;
+  const chartPath = buildLinePath(visibleEquityPoints, visibleEquityPoints.length, chartMinimum, chartMaximum);
+  const chartAreaPath = buildAreaPath(visibleEquityPoints, visibleEquityPoints.length, chartMinimum, chartMaximum);
+  
+  const activePoint = equityPoints[activePlaybackIndex];
+  const activePointVisibleIndex = activePlaybackIndex - startIndex;
+  const activePosition = activePoint && activePointVisibleIndex >= 0 && activePointVisibleIndex < visibleCount
+    ? pointPosition(activePointVisibleIndex, visibleEquityPoints.length, activePoint.equity, chartMinimum, chartMaximum)
+    : null;
+    
+  const tradeMarkers = (result?.trades ?? [])
+    .map((trade) => {
+      const index = equityPoints.findIndex((point) => point.price_datetime === trade.trade_datetime);
+      if (index < startIndex || index >= startIndex + visibleCount) {
+        return null;
+      }
+
+      const point = equityPoints[index];
+      return {
+        trade,
+        index,
+        ...pointPosition(index - startIndex, visibleEquityPoints.length, point.equity, chartMinimum, chartMaximum),
+      };
+    })
+    .filter((marker): marker is { trade: BacktestTrade; index: number; x: number; y: number } => Boolean(marker));
+
+  useEffect(() => {
+    const chartNode = chartRef.current;
+    if (!chartNode) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) > Math.abs(e.deltaX) * 2) {
+        // Zoom
+        const zoomDelta = e.deltaY * -0.01;
+        setZoomLevel((current) => Math.max(1, Math.min(current + zoomDelta, availablePoints / 10)));
+      } else {
+        // Pan
+        const panDelta = e.deltaX * 0.5;
+        setPanIndex((current) => Math.max(0, current + panDelta));
+      }
+    };
+
+    chartNode.addEventListener("wheel", handleWheel, { passive: false });
+    return () => chartNode.removeEventListener("wheel", handleWheel);
+  }, [availablePoints]);
+
+  useEffect(() => {
+    if (!playingPlayback || !equityPoints.length) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setPlaybackIndex((current) => {
+        if (current >= equityPoints.length - 1) {
+          window.clearInterval(interval);
+          setPlayingPlayback(false);
+          return current;
+        }
+
+        return current + 1;
+      });
+    }, 120 / playbackSpeed);
+
+    return () => window.clearInterval(interval);
+  }, [playingPlayback, equityPoints.length, playbackSpeed]);
 
   useEffect(() => {
     try {
@@ -160,9 +359,18 @@ export default function BacktestPage() {
     }
 
     setForm((current) => {
-      const nextAssetId = assets.some((asset) => asset.asset_id === current.asset_id)
-        ? current.asset_id
-        : (assets[0]?.asset_id ?? current.asset_id);
+      const datasetPairs = assets.flatMap((asset) =>
+        (asset.datasets ?? []).map((dataset) => ({
+          asset,
+          dataset,
+        })),
+      );
+      const currentDatasetPair =
+        datasetPairs.find((pair) => pair.dataset.dataset_id === current.dataset_id) ??
+        datasetPairs.find((pair) => pair.asset.asset_id === current.asset_id) ??
+        datasetPairs[0];
+      const nextAssetId = currentDatasetPair?.asset.asset_id ?? (assets[0]?.asset_id ?? current.asset_id);
+      const nextDatasetId = currentDatasetPair?.dataset.dataset_id ?? current.dataset_id ?? null;
       const nextStrategyId = strategies.some((strategy) => strategy.strategy_id === current.strategy_id)
         ? current.strategy_id
         : (strategies[0]?.strategy_id ?? current.strategy_id);
@@ -173,6 +381,7 @@ export default function BacktestPage() {
 
       if (
         nextAssetId === current.asset_id &&
+        nextDatasetId === current.dataset_id &&
         nextStrategyId === current.strategy_id &&
         JSON.stringify(nextParameters) === JSON.stringify(current.parameters)
       ) {
@@ -182,11 +391,27 @@ export default function BacktestPage() {
       return {
         ...current,
         asset_id: nextAssetId,
+        dataset_id: nextDatasetId,
         strategy_id: nextStrategyId,
         parameters: nextParameters,
       };
     });
   }, [assets, strategies]);
+
+  function handleDatasetChange(datasetId: number) {
+    const option = datasetOptions.find((item) => item.dataset.dataset_id === datasetId);
+    if (!option) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      asset_id: option.asset.asset_id,
+      dataset_id: option.dataset.dataset_id,
+      start_date: option.dataset.first_price_date ?? current.start_date,
+      end_date: option.dataset.last_price_date ?? current.end_date,
+    }));
+  }
 
   function handleStrategyChange(strategyId: number) {
     const strategy = strategies.find((item) => item.strategy_id === strategyId);
@@ -230,6 +455,10 @@ export default function BacktestPage() {
         body: JSON.stringify(form),
       });
       setResult(response);
+      setPlaybackIndex(0);
+      setZoomLevel(1);
+      setPanIndex(0);
+      setPlayingPlayback(response.equity_points.length > 0);
       setAiAnswer("");
       setAiMeta(null);
       setAiError("");
@@ -237,6 +466,36 @@ export default function BacktestPage() {
       setRunError(getErrorMessage(error));
     } finally {
       setRunningBacktest(false);
+    }
+  }
+
+  async function tuneConfig() {
+    setTuningConfig(true);
+    setRunError("");
+    setSaveMessage("");
+
+    try {
+      const response = await apiFetch<AiConfigTuneResponse>("/assistant/tune-config", {
+        method: "POST",
+        body: JSON.stringify({
+          current_config: form,
+          position_size: positionSize,
+          metrics: result?.metrics ?? null,
+        }),
+      });
+
+      setForm(response.config);
+      setPositionSize(response.position_size);
+      setSaveMessage(
+        `${response.live ? "AI tuned config" : "Local AI fallback tuned config"}: ${response.summary}`,
+      );
+      if (response.error) {
+        setRunError(response.error);
+      }
+    } catch (error) {
+      setRunError(getErrorMessage(error));
+    } finally {
+      setTuningConfig(false);
     }
   }
 
@@ -301,23 +560,46 @@ export default function BacktestPage() {
           </label>
 
           <label>
-            Asset Universe
+            Search Dataset
+            <input
+              value={datasetQuery}
+              onChange={(event) => setDatasetQuery(event.target.value)}
+              placeholder="Search dataset, symbol, market, type, or date"
+            />
+          </label>
+
+          <label>
+            Dataset Universe
             <select
-              value={form.asset_id}
-              onChange={(event) => setForm({ ...form, asset_id: Number(event.target.value) })}
-              disabled={loadingWorkspace || !assets.length}
+              value={form.dataset_id ?? ""}
+              onChange={(event) => handleDatasetChange(Number(event.target.value))}
+              disabled={loadingWorkspace || !visibleDatasetOptions.length}
             >
-              {assets.length ? (
-                assets.map((asset) => (
-                  <option key={asset.asset_id} value={asset.asset_id}>
-                    {asset.symbol}
+              {visibleDatasetOptions.length ? (
+                visibleDatasetOptions.map((option) => (
+                  <option key={option.dataset.dataset_id} value={option.dataset.dataset_id}>
+                    {formatDatasetOption(option)}
                   </option>
                 ))
               ) : (
-                <option value="">No assets available</option>
+                <option value="">No matching datasets</option>
               )}
             </select>
           </label>
+          {normalizedDatasetQuery && !filteredDatasetOptions.length ? <p className="errorText">No dataset matches that search.</p> : null}
+          {selectedAsset && selectedDataset ? (
+            <div className="assetDatasetCard">
+              <strong>{selectedAsset.symbol}</strong>
+              <span>{selectedAsset.asset_name}</span>
+              <span>Dataset: {selectedDataset.dataset_name}</span>
+              <span>
+                {selectedAsset.asset_type} / {selectedAsset.market || "Unknown market"} / {selectedDataset.price_points} rows
+              </span>
+              <span>
+                Date range: {selectedDataset.first_price_date ?? "N/A"} to {selectedDataset.last_price_date ?? "N/A"}
+              </span>
+            </div>
+          ) : null}
 
           <div className="splitInputs">
             <label>
@@ -391,6 +673,14 @@ export default function BacktestPage() {
               Save Config
             </button>
             <button
+              type="button"
+              className="ghostButton"
+              onClick={tuneConfig}
+              disabled={tuningConfig || loadingWorkspace || !assets.length || !strategies.length}
+            >
+              {tuningConfig ? "Tuning..." : "AI Tune Config"}
+            </button>
+            <button
               type="submit"
               className="runButton"
               disabled={runningBacktest || loadingWorkspace || !assets.length || !strategies.length}
@@ -435,23 +725,110 @@ export default function BacktestPage() {
         <article className="platformPanel chartStage">
           <div className="panelHeader">
             <div>
-              <h3>Equity Curve</h3>
-              <p>Mock chart, real backtest metrics</p>
+              <h3>Equity Playback</h3>
+              <p>{activePoint ? `${activePoint.price_datetime.slice(0, 10)} / ${currency(activePoint.equity)}` : "Run a backtest to load playback"}</p>
             </div>
-            <div className="tabRow">
-              <span className="active">Equity Curve</span>
-              <span>Trade Log</span>
-              <span>Confidence</span>
+            <div className="tabRow" style={{ alignItems: "center" }}>
+              {equityPoints.length ? (
+                <>
+                  <select 
+                    value={playbackSpeed} 
+                    onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+                    style={{ padding: "0.2rem 0.6rem", width: "auto", background: "rgba(255, 255, 255, 0.04)", border: "none", color: "#8fa8c5", borderRadius: "999px", fontSize: "0.78rem", cursor: "pointer" }}
+                  >
+                    <option value="0.5">0.5x</option>
+                    <option value="1">1x</option>
+                    <option value="2">2x</option>
+                    <option value="4">4x</option>
+                    <option value="10">10x</option>
+                  </select>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max={equityPoints.length - 1} 
+                    value={activePlaybackIndex} 
+                    onChange={(e) => {
+                      setPlaybackIndex(Number(e.target.value));
+                      setPlayingPlayback(false);
+                    }} 
+                    style={{ width: "120px", height: "4px", margin: "0 0.5rem" }}
+                  />
+                </>
+              ) : null}
+              <button type="button" className="active" onClick={() => setPlaybackIndex(0)} disabled={!equityPoints.length}>
+                Reset
+              </button>
+              <button
+                type="button"
+                className="active"
+                onClick={() => setPlayingPlayback((current) => !current)}
+                disabled={!equityPoints.length}
+              >
+                {playingPlayback ? "Pause" : "Play"}
+              </button>
             </div>
           </div>
-          <div className="mockChart tall">
-            <div className="chartBenchmark" />
-            <div className="chartStrategy dramatic" />
-            <div className="drawdownBand" />
-            <div className="chartCallout">
-              <span>{form.run_name}</span>
-              <strong>{result ? percent(result.metrics.total_return) : "--"}</strong>
-            </div>
+          <div className="tradePlaybackChart">
+            {equityPoints.length ? (
+              <>
+                <svg viewBox="0 0 1000 320" role="img" aria-label="Backtest equity curve with buy and sell markers">
+                  <defs>
+                    <linearGradient id="equityFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#21c98b" stopOpacity="0.34" />
+                      <stop offset="100%" stopColor="#21c98b" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  {[280, 215, 150, 85, 20].map((y) => {
+                    const val = chartMinimum + ((chartMaximum - chartMinimum) * (280 - y)) / 260;
+                    return (
+                      <g key={`grid-y-${y}`}>
+                        <line x1="0" x2="1000" y1={y} y2={y} className="chartGridLine" />
+                        <text x="6" y={y - 6} className="chartLabel">{currency(val)}</text>
+                      </g>
+                    );
+                  })}
+                  {[0, 200, 400, 600, 800, 1000].map((x, i) => {
+                    const index = Math.floor((i / 5) * (visibleEquityPoints.length - 1));
+                    const point = visibleEquityPoints[index];
+                    return (
+                      <g key={`grid-x-${x}`}>
+                        <line x1={x} x2={x} y1="20" y2="290" className="chartGridLine" />
+                        {point ? (
+                          <text 
+                            x={x === 0 ? 6 : x === 1000 ? 994 : x} 
+                            y="312" 
+                            className="chartLabel" 
+                            textAnchor={x === 0 ? "start" : x === 1000 ? "end" : "middle"}
+                          >
+                            {point.price_datetime.slice(0, 10)}
+                          </text>
+                        ) : null}
+                      </g>
+                    );
+                  })}
+                  <path d={chartAreaPath} className="equityArea" />
+                  <path d={chartPath} className="equityLine" />
+                  {tradeMarkers.map((marker) => (
+                    <g key={`${marker.trade.trade_id}-${marker.index}`} transform={`translate(${marker.x} ${marker.y})`}>
+                      <circle className={marker.trade.trade_action === "BUY" ? "buyMarker" : "sellMarker"} r="8" />
+                    </g>
+                  ))}
+                  {activePosition ? (
+                    <g transform={`translate(${activePosition.x} ${activePosition.y})`}>
+                      <line x1="0" x2="0" y1={-activePosition.y + 20} y2={290 - activePosition.y} className="playheadLine" />
+                      <circle className="playheadDot" r="6" />
+                    </g>
+                  ) : null}
+                </svg>
+                <div className="chartCallout">
+                  <span>{form.run_name}</span>
+                  <strong>{result ? percent(result.metrics.total_return) : "--"}</strong>
+                  <small>{activePoint ? `${activePlaybackIndex + 1} / ${equityPoints.length} candles` : "No playback"}</small>
+                </div>
+              </>
+            ) : (
+              <div className="emptyPlayback">Run a backtest to generate the equity curve and buy/sell markers.</div>
+            )}
           </div>
         </article>
 

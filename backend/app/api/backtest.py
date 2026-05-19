@@ -60,6 +60,11 @@ def delete_run(run_id: int):
 def run_backtest(payload: BacktestRequest):
     store = read_store()
     asset = next((row for row in store["assets"] if row["asset_id"] == payload.asset_id), None)
+    dataset = None
+    if payload.dataset_id is not None:
+        dataset = next((row for row in store.get("price_datasets", []) if row["dataset_id"] == payload.dataset_id), None)
+        if not dataset or dataset["asset_id"] != payload.asset_id:
+            raise HTTPException(status_code=404, detail="Dataset not found for selected asset.")
     strategy = next((row for row in store["strategies"] if row["strategy_id"] == payload.strategy_id), None)
     if not asset or not strategy:
         raise HTTPException(status_code=404, detail="Asset or strategy not found.")
@@ -69,6 +74,8 @@ def run_backtest(payload: BacktestRequest):
         for row in store["historical_prices"]
         if row["asset_id"] == payload.asset_id and payload.start_date <= row["price_datetime"][:10] <= payload.end_date
     ]
+    if payload.dataset_id is not None:
+        prices = [row for row in prices if row.get("dataset_id") == payload.dataset_id]
     prices.sort(key=lambda item: item["price_datetime"])
     if len(prices) < 20:
         raise HTTPException(status_code=400, detail="Not enough historical data in the selected date range.")
@@ -86,6 +93,7 @@ def run_backtest(payload: BacktestRequest):
         "backtest_run_id": run_id,
         "user_id": payload.user_id,
         "asset_id": payload.asset_id,
+        "dataset_id": payload.dataset_id,
         "strategy_id": payload.strategy_id,
         "run_name": payload.run_name,
         "start_date": payload.start_date,
@@ -132,6 +140,8 @@ def run_backtest(payload: BacktestRequest):
         "metrics": metrics_record,
         "trades": stored_trades,
         "equity_curve": results["equity_curve"],
+        "equity_points": results["equity_points"],
         "asset": asset,
+        "dataset": dataset,
         "strategy": strategy,
     }

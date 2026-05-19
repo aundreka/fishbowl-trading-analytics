@@ -1,3 +1,14 @@
+export type PriceDataset = {
+  dataset_id: number;
+  asset_id: number;
+  dataset_name: string;
+  uploaded_at?: string;
+  source?: string;
+  price_points: number;
+  first_price_date?: string | null;
+  last_price_date?: string | null;
+};
+
 export type Asset = {
   asset_id: number;
   symbol: string;
@@ -6,6 +17,12 @@ export type Asset = {
   asset_type_id: number;
   asset_type: string;
   price_points: number;
+  dataset_name?: string;
+  dataset_uploaded_at?: string;
+  dataset_rows?: number;
+  first_price_date?: string | null;
+  last_price_date?: string | null;
+  datasets?: PriceDataset[];
 };
 
 export type StrategyParameter = {
@@ -39,6 +56,7 @@ export type BacktestRun = {
   backtest_run_id: number;
   user_id: number;
   asset_id: number;
+  dataset_id?: number | null;
   strategy_id: number;
   run_name: string;
   start_date: string;

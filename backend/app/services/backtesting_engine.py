@@ -10,6 +10,7 @@ def run_backtest_engine(prices: list[dict], strategy: dict, parameters: dict, in
     position = 0.0
     trades: list[dict] = []
     equity_curve: list[float] = []
+    equity_points: list[dict] = []
     trade_index = 1
 
     for price, signal in zip(prices, signals):
@@ -54,7 +55,15 @@ def run_backtest_engine(prices: list[dict], strategy: dict, parameters: dict, in
             position = 0.0
             trade_index += 1
 
-        equity_curve.append(round(cash + (position * close_price), 2))
+        equity = round(cash + (position * close_price), 2)
+        equity_curve.append(equity)
+        equity_points.append(
+            {
+                "price_datetime": price["price_datetime"],
+                "equity": equity,
+                "close_price": round(close_price, 6),
+            }
+        )
 
     if prices and position > 0:
         final_price = float(prices[-1]["close_price"])
@@ -74,6 +83,7 @@ def run_backtest_engine(prices: list[dict], strategy: dict, parameters: dict, in
             }
         )
         equity_curve[-1] = round(cash, 2)
+        equity_points[-1]["equity"] = round(cash, 2)
 
     final_equity = equity_curve[-1] if equity_curve else initial_capital
     metrics = calculate_metrics(initial_capital, final_equity, trades, equity_curve or [initial_capital])
@@ -81,4 +91,5 @@ def run_backtest_engine(prices: list[dict], strategy: dict, parameters: dict, in
         "trades": trades,
         "metrics": metrics,
         "equity_curve": equity_curve,
+        "equity_points": equity_points,
     }
